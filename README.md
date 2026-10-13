@@ -2,6 +2,8 @@
 
 Paikallinen selainpeli, jossa on yhteinen 2–6 pelaajan lobby ja pelattava No-limit Texas Hold’em.
 
+[Ota peli käyttöön Renderissä](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2Fjarrrtsa%2Fcasino). Valmis Blueprint käyttää Free-palvelua. Kirjaudu Renderiin ja yhdistä tämä repository; tarkat ohjeet ovat [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ## Käynnistys
 
 Node.js 20 tai uudempi. Ulkoisia npm-paketteja ei vielä tarvita.

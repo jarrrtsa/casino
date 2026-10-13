@@ -4,9 +4,9 @@ Peli tarvitsee **Web Servicen**, joka ajaa Node.js-palvelinta. Selain ja API pal
 
 ## 1. Lähdekoodi GitHubiin
 
-Luo GitHubiin projektille repository, esimerkiksi `casino-royale`. Private käy: lähdekoodin ei tarvitse olla julkinen. Lisää tämän projektin tiedostot repositoryn juureen niin, että `package.json`, `server.mjs` ja `render.yaml` näkyvät heti etusivulla, eivät ylimääräisen alikansion sisällä. Myös `public/`, `test/` ja `.github/` kuuluvat mukaan.
+Tämän projektin lähdekoodi ja hosting-asetukset on lähetetty [jarrrtsa/casino-repositoryyn](https://github.com/jarrrtsa/casino), haaralle `master`. Repo voi pysyä privatenä; anna Renderille pääsy vain tähän repositoryyn.
 
-Älä lataa `.git/`-kansiota tai tulevia `.env`-tiedostoja. Projektissa ei ole palveluntarjoajan avaimia eikä muita salaisuuksia.
+Jos siirrät projektin myöhemmin eri repositoryyn, lisää tiedostot sen juureen niin, että `package.json`, `server.mjs` ja `render.yaml` näkyvät heti etusivulla. Myös `public/`, `test/` ja `.github/` kuuluvat mukaan. Älä lataa `.git/`-kansiota tai tulevia `.env`-tiedostoja.
 
 ## 2. Render-tili
 
@@ -14,7 +14,7 @@ Avaa https://dashboard.render.com/ ja luo tili. Liitä Renderille pääsy tähä
 
 ## 3. Blueprint
 
-Valitse **New → Blueprint**, valitse repository ja ota käyttöön sen `render.yaml`. Tarkista ennen luontia, että palvelun plan on **Free**. Asetustiedosto ei luo maksullista tietokantaa, levyä tai muita palveluita.
+Avaa [valmis Render-käyttöönotto](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2Fjarrrtsa%2Fcasino). Vaihtoehtoisesti valitse **New → Blueprint**, valitse `jarrrtsa/casino` ja ota käyttöön sen `render.yaml`. Tarkista ennen luontia, että palvelun plan on **Free**. Asetustiedosto ei luo maksullista tietokantaa, levyä tai muita palveluita.
 
 Jos käytät manuaalista **New → Web Service** -tapaa, asetukset ovat:
 
