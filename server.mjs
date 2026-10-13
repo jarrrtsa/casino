@@ -63,7 +63,7 @@ function scheduleTurn(room) {
 function reply(res, status, data) { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(data)); }
 async function body(req) {
   let data = '';
-  for await (const chunk of req) { data += chunk; if (data.length > 4096) throw new Error('Pyyntö on liian suuri.'); }
+  for await (const chunk of req) { data += chunk; if (data.length > 4096) throw new Error('Request too large.'); }
   return JSON.parse(data || '{}');
 }
   const server = http.createServer(async (req, res) => {
@@ -78,12 +78,12 @@ async function body(req) {
       if (req.method === 'POST' && url.pathname.startsWith('/api/')) {
         if (req.headers.origin) {
           let originHost;
-          try { originHost = new URL(req.headers.origin).host; } catch { return reply(res, 403, { error: 'Virheellinen alkuperä.' }); }
-          if (originHost !== req.headers.host) return reply(res, 403, { error: 'Pyyntö tulee eri sivustolta.' });
+          try { originHost = new URL(req.headers.origin).host; } catch { return reply(res, 403, { error: 'Invalid origin.' }); }
+          if (originHost !== req.headers.host) return reply(res, 403, { error: 'Cross-site request blocked.' });
         }
         // Deliberately ignore forwarded IP headers: a proxy IP limit protects resources,
         // while session limits below handle players sharing the same proxy.
-        if (!allowRequest(`global:${req.socket.remoteAddress}`, 600)) { res.setHeader('Retry-After', '60'); return reply(res, 429, { error: 'Liikaa pyyntöjä. Odota hetki.' }); }
+        if (!allowRequest(`global:${req.socket.remoteAddress}`, 600)) { res.setHeader('Retry-After', '60'); return reply(res, 429, { error: 'Too many requests. Try again shortly.' }); }
       }
       if (req.method === 'GET' && publicFiles.has(url.pathname)) {
         const [file, type] = publicFiles.get(url.pathname);
@@ -92,19 +92,19 @@ async function body(req) {
       }
       if (req.method === 'POST' && ['/api/create', '/api/join'].includes(url.pathname)) {
         cleanup();
-        if (!allowRequest(`join:${req.socket.remoteAddress}`, creationLimit)) { res.setHeader('Retry-After', '60'); return reply(res, 429, { error: 'Liikaa liittymisyrityksiä. Odota minuutti.' }); }
+        if (!allowRequest(`join:${req.socket.remoteAddress}`, creationLimit)) { res.setHeader('Retry-After', '60'); return reply(res, 429, { error: 'Too many join attempts. Wait a minute.' }); }
         const data = await body(req);
         const name = typeof data.name === 'string' ? data.name.trim().slice(0, 24) : '';
-        if (!name) return reply(res, 400, { error: 'Anna pelaajalle nimi.' });
+        if (!name) return reply(res, 400, { error: 'Enter a player name.' });
         let room;
         if (url.pathname === '/api/create') {
-          if (rooms.size >= roomLimit) return reply(res, 503, { error: 'Palvelin on täynnä. Kokeile myöhemmin.' });
+          if (rooms.size >= roomLimit) return reply(res, 503, { error: 'Server full. Try again later.' });
           let code;
           do { code = randomBytes(3).toString('hex').toUpperCase(); } while (rooms.has(code));
           room = { code, host: null, players: [] }; rooms.set(code, room);
         } else { room = rooms.get(String(data.code || '').trim().toUpperCase()); }
-        if (!room) return reply(res, 404, { error: 'Lobbyä ei löytynyt. Tarkista koodi.' });
-        if (room.players.length >= 6) return reply(res, 409, { error: 'Pöytä on täynnä (6 pelaajaa).' });
+        if (!room) return reply(res, 404, { error: 'Lobby not found. Check the code.' });
+        if (room.players.length >= 6) return reply(res, 409, { error: 'Table full (6 players).' });
         const player = { id: randomUUID(), name, ready: false, stack: 1000, disconnectedAt: now() };
         if (!room.host) room.host = player.id;
         room.players.push(player);
@@ -114,11 +114,11 @@ async function body(req) {
       }
       const token = req.headers.authorization?.replace(/^Bearer /, '');
       const session = sessions.get(token);
-      if (url.pathname.startsWith('/api/') && !session) return reply(res, 401, { error: 'Liity ensin lobbyyn.' });
-      if (session && req.method === 'POST' && !allowRequest(`session:${token}`, 120)) { res.setHeader('Retry-After', '60'); return reply(res, 429, { error: 'Liikaa pyyntöjä. Odota minuutti.' }); }
+      if (url.pathname.startsWith('/api/') && !session) return reply(res, 401, { error: 'Join a lobby first.' });
+      if (session && req.method === 'POST' && !allowRequest(`session:${token}`, 120)) { res.setHeader('Retry-After', '60'); return reply(res, 429, { error: 'Too many requests. Wait a minute.' }); }
       if (req.method === 'POST' && url.pathname === '/api/session') return reply(res, 200, snapshot(session.room, session.player.id));
       if (req.method === 'GET' && url.pathname === '/api/events') {
-        if ((streams.get(session.player.id)?.size || 0) >= 3) return reply(res, 429, { error: 'Liikaa yhtäaikaisia yhteyksiä.' });
+        if ((streams.get(session.player.id)?.size || 0) >= 3) return reply(res, 429, { error: 'Too many concurrent connections.' });
         res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', 'Connection': 'keep-alive', 'X-Accel-Buffering': 'no' });
         if (!streams.has(session.player.id)) streams.set(session.player.id, new Set());
         streams.get(session.player.id).add(res); broadcast(session.room);
@@ -127,16 +127,16 @@ async function body(req) {
         res.on('close', () => { clearInterval(keepalive); streams.get(session.player.id)?.delete(res); if (!streams.get(session.player.id)?.size) session.player.disconnectedAt = now(); broadcast(session.room); }); return;
       }
       if (req.method === 'POST' && url.pathname === '/api/ready') {
-        if (session.room.hand && session.room.hand.stage !== 'finished') return reply(res, 409, { error: 'Jako on kesken.' });
+        if (session.room.hand && session.room.hand.stage !== 'finished') return reply(res, 409, { error: 'Hand in progress.' });
         session.player.ready = !session.player.ready; broadcast(session.room); return reply(res, 200, snapshot(session.room, session.player.id));
       }
       if (req.method === 'POST' && url.pathname === '/api/start') {
         const { room, player } = session;
-        if (room.host !== player.id) return reply(res, 403, { error: 'Vain host voi aloittaa jaon.' });
-        if (room.hand && room.hand.stage !== 'finished') return reply(res, 409, { error: 'Jako on jo käynnissä.' });
+        if (room.host !== player.id) return reply(res, 403, { error: 'Only the host can start a hand.' });
+        if (room.hand && room.hand.stage !== 'finished') return reply(res, 409, { error: 'Hand already in progress.' });
         cleanup();
         const funded = room.players.filter(p => p.stack > 0 && streams.get(p.id)?.size);
-        if (funded.length < 2 || funded.some(p => !p.ready)) return reply(res, 409, { error: 'Tarvitaan vähintään kaksi paikalla olevaa pelaajaa. Kaikkien pelaavien tulee olla valmiina.' });
+        if (funded.length < 2 || funded.some(p => !p.ready)) return reply(res, 409, { error: 'At least two connected players are required. All participating players must be ready.' });
         const previousDealer = room.hand?.seats[room.hand.dealer].id;
         const oldIndex = room.players.findIndex(p => p.id === previousDealer);
         let dealer = funded[0].id;
@@ -146,18 +146,18 @@ async function body(req) {
       }
       if (req.method === 'POST' && url.pathname === '/api/action') {
         const data = await body(req); const { room, player } = session;
-        if (!room.hand || data.hand !== room.hand.number || data.version !== room.hand.version) return reply(res, 409, { error: 'Pöydän tilanne muuttui. Tarkista vuorosi.' });
+        if (!room.hand || data.hand !== room.hand.number || data.version !== room.hand.version) return reply(res, 409, { error: 'Table state changed. Check your turn.' });
         try { act(room.hand, player.id, data.action, data.amount); } catch (error) { return reply(res, 400, { error: error.message }); }
         scheduleTurn(room); broadcast(room); return reply(res, 200, snapshot(room, player.id));
       }
       if (req.method === 'POST' && url.pathname === '/api/leave') {
         const { room, player } = session;
-        if (room.hand?.stage !== 'finished' && room.hand?.seats.some(p => p.id === player.id)) return reply(res, 409, { error: 'Odota jaon päättymistä ennen pöydästä poistumista. Vuoro ohitetaan automaattisesti 60 sekunnissa.' });
+        if (room.hand?.stage !== 'finished' && room.hand?.seats.some(p => p.id === player.id)) return reply(res, 409, { error: 'Wait for your hand to finish before leaving. Turns time out after 60 seconds.' });
         removeSession(token, session);
         return reply(res, 200, { ok: true });
       }
-      reply(res, 404, { error: 'Sivua ei löytynyt.' });
-    } catch { reply(res, 400, { error: 'Pyyntöä ei voitu käsitellä.' }); }
+      reply(res, 404, { error: 'Page not found.' });
+    } catch { reply(res, 400, { error: 'Unable to process request.' }); }
   });
   const housekeeping = setInterval(cleanup, options.cleanupMs ?? 10000);
   housekeeping.unref();

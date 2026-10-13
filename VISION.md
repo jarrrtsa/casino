@@ -4,29 +4,35 @@ Casino Royale on selaimessa pelattava singleplayer casino-RPG, josta voi lähte�
 
 ## Pelin kulku
 
-Päävalikko → hahmo → koti → toiminta → takaisin kotiin.
+Koti (landing screen ja päävalikko) → toiminta → takaisin kotiin.
 
-Päävalikossa ovat yksinpeli, moninpeli, hahmo ja asetukset. Ensimmäisellä kerralla luodaan hahmo. Hahmon koti on yksinpelin keskus: siellä valitaan casino-pöytä, avataan tai etsitään multiplayer-lobby, muokataan hahmoa ja hoidetaan taloutta, sivutehtäviä ja minipelejä. Multiplayer ei ole erillinen hahmo tai talous.
+Hahmon koti on pelin aloitusnäkymä ja päävalikko. Oikean reunan yhteisessä valikossa ovat yksinpeli, multiplayer, hahmon muokkaus, pankki, minipelit ja asetukset. Ensimmäisellä kerralla luodaan hahmo. Multiplayer ei ole erillinen hahmo tai talous. Singleplayerissä pelataan NPC-pelaajia vastaan Hold’emia, blackjackia, rulettia ja slotseja; pelit toteutetaan vaiheittain Hold’emista alkaen.
 
 ## Hahmo ja talous
 
 - Hahmolla on pysyvä identiteetti, saldo, velka, tilastot, omistetut kosmetiikat ja progression taso.
 - Pöydissä pelataan samalla valuutalla, jolla ostetaan kosmetiikkaa, sijoitetaan ja hoidetaan pankkiasioita.
-- Laina kasvattaa käytettävää saldoa ja velkaa. Käytettävä saldo ja velka näkyvät erillisinä; velka ei katoa saldon loppuessa. Voitoista voi maksaa lainaa takaisin.
+- Laina kasvattaa käytettävää saldoa ja velkaa. Käytettävä saldo ja velka näkyvät erillisinä; velka ei katoa saldon loppuessa. Voitoista voi maksaa lainaa takaisin. Vain yksi laina voi olla aktiivinen kerrallaan. Uutta lainaa ei saa ennen kuin edellinen on kokonaan maksettu.
 - Keksitty osakemarkkina, minipelit ja sivutehtävät tuovat rahalle muita käyttötapoja ja pieniä tulonlähteitä. Tarkat mekanismit ja talouden tasapaino suunnitellaan myöhemmin.
-- Tilastojen nollaus ja uuden hahmon aloittaminen ovat eri toimintoja. Tilastojen nollaus ei anna lisää rahaa tai poista velkaa. Tarkka asetusten toiminta päätetään ennen toteutusta.
+- Hahmon voi poistaa ja aloittaa uuden, jos ei halua ansaita minipeleillä rahaa lainan takaisinmaksuun. Poisto menettää hahmon tilastohistorian, XP:n, levelin ja unlockit. Uusi hahmo aloittaa alusta. Toteutukseen tulee selkeä vahvistus ennen poistoa. Tilastojen nollaus ei itsessään poista velkaa tai anna lisää rahaa.
 - Alustava alkusaldo on $1 000; lopullisia progression rajoja tai pöytäsummia ei vielä lukita.
 
 ## Progressio ja multiplayer
 
-Ensimmäinen casino on hämärä, savuinen kellari. Eteneminen avaa hienompia ympäristöjä sekä erilaiset buy-init, blindit ja NPC-vaikeustasot. Hostin valitsema, hänen progressionsa sallima ympäristö määrittää multiplayer-lobbyn paikan ja pöydän asetukset. Kaverit saavat liittyä myös eri progression vaiheesta; sisäänpääsy- ja rahavaatimukset suunnitellaan erikseen.
+Varallisuus ja XP/level ovat eri progression mittareita. Pelatuista ja voitetuista peleistä kertyy XP:tä. Level avaa uusia hahmon muokkausvaihtoehtoja. Kodin paremmat vaihtoehdot ovat aluksi lukittuja: päivitys vaatii sekä riittävän levelin että varallisuuden. Tarkat XP-määrät, levelrajat ja päivitysehdot päätetään myöhemmin.
+
+Koti näyttää hahmon varallisuuden: negatiivinen saldo voi tarkoittaa asumista sillan alla, tuhannet halpaa vuokra-asuntoa ja sadat tuhannet luksuskartanoa. Summat ovat suuntaa antavia. Velan vaikutus varallisuuden laskentaan sekä saldon laskun vaikutus aiemmin avattuun kotiin määritellään ennen talouden toteutusta.
+
+Multiplayer-pöytä voi sijaita hostin hahmon kodissa. Näin kaverit näkevät hänen varallisuutensa ympäristöstä. Nykyinen kellari säilyy placeholder-pöytänä. Eteneminen muuttaa myös buy-inejä, blindejä ja NPC-vaikeutta. Kaverien sisäänpääsy- ja rahavaatimukset suunnitellaan erikseen.
 
 ## Esitystapa
 
 - 2D-vektorigrafiikka, jossa perspektiivi, kerrokset, varjot ja valo antavat tilan tuntua.
 - Pelimaailma täyttää selaimen koko näkyvän alueen; lisäksi voi käyttää selaimen fullscreen-tilaa.
 - Lobby, käsi, panostus ja tapahtumat ovat pelimaailman päällä olevia HUD-elementtejä. Lobby on piilotettavissa. Toimintopainikkeet eivät katoa kesken oman vuoron.
-- Kotinäkymässä toiminnot kiinnittyvät huoneen esineisiin; suuri korttiruudukko ei korvaa huonetta.
+- Koti on landing screen: toiminnot ovat yhdessä oikean reunan valikossa, eivät erillisinä painikkeina ympäri huonetta.
+- Omat kortit näkyvät selvästi luettavana pöydän etureunassa ilman erillistä laatikkoa. Saldo ja panostukset ovat samassa kevyessä alareunan ohjaimessa. Lobby säilyy avattavana/piilotettavana valikkona.
+- Käyttöliittymän kieli on englanti. Tekstit ovat lyhyitä toiminnallisia nimiä ja tilailmoituksia; sloganeita ei käytetä.
 - Hahmot ovat alustavia; hiukset, vaatteet ja muut osat erotellaan myöhemmin muokattaviksi.
 - Reduced motion, ympäristöefektit ja äänten asetukset kuuluvat yhteiseen pelikuoreen. Online-peli jatkuu valikon ollessa auki.
 
@@ -38,7 +44,7 @@ Yhteisen talouden pysyvä totuus on palvelimella tietokannassa. Selaimen localSt
 
 ## Toteutusjärjestys
 
-1. Päävalikko, alustava nimetty hahmo, koti ja fullscreen-pelikuori. Multiplayer säilyy pelattavana. Tulevat toiminnot merkitään selvästi.
+1. Koti aloitusnäkymäksi, yhteinen oikean reunan valikko, alustava nimetty hahmo ja fullscreen-pelikuori. Multiplayer säilyy pelattavana. Tulevat toiminnot merkitään selvästi.
 2. Hold’emin lopullinen peliasettelu, selkeys, animaatioiden rytmi ja ääni-ilme; design language lukitaan palautteen jälkeen.
 3. Pysyvä hahmo ja tapahtumiin perustuva talous, sitten NPC-Hold’em samalla hahmolla. Molemmat käyttävät samaa saldoa.
 4. Pankki, tilastot, kosmetiikka ja progression ympäristöt.

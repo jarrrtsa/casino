@@ -34,9 +34,9 @@ Palvelin jakaa kortit, tarkistaa panostukset ja vuorot sekä ratkaisee parhaan v
 
 ## The Basement -ulkoasu
 
-Pelin päivitetty visio ja toteutusjärjestys ovat [VISION.md](VISION.md): singleplayer casino-RPG, jonka omalla hahmolla ja saldolla voi myöhemmin liittyä kaveripöytiin. Nyt päävalikosta pääsee nimettyyn hahmoon, omaan kotiin tai multiplayeriin. NPC-pöydät, talous ja kosmetiikka ovat selvästi merkittyjä tulevia toimintoja.
+Pelin päivitetty visio ja toteutusjärjestys ovat [VISION.md](VISION.md): singleplayer casino-RPG, jonka omalla hahmolla ja saldolla voi myöhemmin liittyä kaveripöytiin. Hahmon koti on suoraan pelin aloitusnäkymä. Oikean reunan valikossa ovat singleplayer, multiplayer, hahmo, pankki, minipelit ja asetukset. NPC-pöydät, talous ja kosmetiikka ovat selvästi merkittyjä tulevia toimintoja. Käyttöliittymä on englanniksi.
 
-Pelikuori täyttää selaimen näkymän. Lobby on sivulle avautuva piilotettava paneeli; oma käsi, potti, vuoro, tulokset ja panostukset ovat pelimaailman päällä. `public/shell.js` hoitaa valikoiden navigoinnin ja selainkohtaiset nimi-/asetusmuistot; `public/shell.css` hoitaa niiden asettelun. Kodin vektorikuva on `public/assets/home.svg`.
+Pelikuori täyttää selaimen näkymän. Lobby on sivulle avautuva piilotettava paneeli. Omat kortit ovat pöydän etureunassa ilman erillistä laatikkoa; saldo ja panostukset ovat samassa alareunan ohjaimessa. `public/shell.js` hoitaa valikoiden navigoinnin ja selainkohtaiset nimi-/asetusmuistot; `public/shell.css` hoitaa niiden asettelun. Kodin vektorikuva on `public/assets/home.svg`.
 
 Ensimmäinen ympäristö on hämärä kellari: perspektiivipöytä, sikaria polttava jakaja ja pelkistetyt pelaajahahmot. Omat SVG-grafiikat ovat tiedostoissa `public/assets/cellar.svg`, `public/assets/dealer.svg` ja `public/assets/avatars.svg`. Ne ovat muokattavia vektoreita, eikä kuvageneraattoria tai ulkoisia kuvapankkeja ole käytetty. Jakaja on oma kerroksensa, jotta hahmon mittasuhteet säilyvät eri näytöillä. Oma käsi näkyy alareunassa. Hahmojen muokkaus ja ympäristöjen progression vaiheet tulevat myöhemmin.
 

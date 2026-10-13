@@ -11,7 +11,7 @@ let soundOn = false;
 let audioContext;
 const ui = createShell({ getRoom: () => currentRoom, onLeave: () => $('leave').click(), onSound: enabled => setSound(enabled), onError: text => setError(text) });
 const money = value => `$${value.toLocaleString('en-US')}`;
-const stageNames = { preflop: 'Preflop', flop: 'Flop', turn: 'Turn', river: 'River', finished: 'Jako päättyi' };
+const stageNames = { preflop: 'Preflop', flop: 'Flop', turn: 'Turn', river: 'River', finished: 'Hand finished' };
 const cardKey = c => `${c.rank}${c.suit}`;
 function node(tag, className = '', text = '') { const element = document.createElement(tag); element.className = className; element.textContent = text; return element; }
 function setError(text = '') { $('error').textContent = text; $('error').classList.toggle('hidden', !text); }
@@ -36,7 +36,7 @@ function cards(container, values, total = values.length, { back = false, hand = 
         const suit = ({ s: '♠', h: '♥', d: '♦', c: '♣' })[card.suit];
         fresh.append(node('span', 'card-rank', String(rank)), node('span', 'card-suit', suit), node('span', 'card-center', suit));
         fresh.setAttribute('aria-label', `${rank} ${suit}`);
-      } else { fresh.textContent = back ? '♠' : ''; fresh.setAttribute('aria-label', back ? 'Piilotettu kortti' : 'Korttia ei vielä jaettu'); }
+      } else { fresh.textContent = back ? '♠' : ''; fresh.setAttribute('aria-label', back ? 'Face-down card' : 'Undealt card'); }
       if (element) element.replaceWith(fresh); else container.append(fresh); element = fresh;
     }
     element.className = `card${card && ['h', 'd'].includes(card.suit) ? ' red' : ''}${!card ? back ? ' back' : ' placeholder' : ''}${card && winners.has(cardKey(card)) ? ' winning' : ''}`;
@@ -61,17 +61,17 @@ function renderSeats(room) {
       if (player) {
         const info = node('div', 'seat-info'); info.append(node('strong', 'seat-name'), node('span', 'seat-stack'), node('small', 'seat-state'), node('div', 'seat-badges'));
         fresh.append(avatar(participants.findIndex(p => p.id === player.id)), info, node('div', 'cards mini'), node('span', 'seat-bet hidden'));
-      } else fresh.append(node('div', 'seat-info', 'Vapaa paikka'));
+      } else fresh.append(node('div', 'seat-info', 'Empty seat'));
       if (seat) seat.replaceWith(fresh); else $('seats').append(fresh); seat = fresh;
     }
     if (!player) { seat.className = 'seat empty'; continue; }
     const online = room.players.find(p => p.id === player.id);
     const winner = h?.results.some(r => r.id === player.id);
     seat.className = `seat${player.id === session.playerId ? ' self' : ''}${player.folded ? ' folded' : ''}${h?.turnId === player.id ? ' turn' : ''}${winner ? ' winner' : ''}`;
-    seat.querySelector('.seat-name').textContent = `${player.name}${player.id === session.playerId ? ' · sinä' : ''}`;
+    seat.querySelector('.seat-name').textContent = `${player.name}${player.id === session.playerId ? ' · you' : ''}`;
     seat.querySelector('.seat-name').title = player.name;
     seat.querySelector('.seat-stack').textContent = money(player.stack);
-    seat.querySelector('.seat-state').textContent = !online?.connected ? 'Yhteys katkesi' : player.folded ? 'Fold' : winner ? `+${money(h.results.filter(r => r.id === player.id).reduce((sum, r) => sum + r.amount, 0))}` : player.allIn ? 'ALL-IN' : h?.stage === 'finished' ? player.handName || 'Jako päättyi' : player.lastAction || (h ? 'Mukana' : online?.ready ? 'Valmis' : 'Odottaa');
+    seat.querySelector('.seat-state').textContent = !online?.connected ? 'Disconnected' : player.folded ? 'Fold' : winner ? `+${money(h.results.filter(r => r.id === player.id).reduce((sum, r) => sum + r.amount, 0))}` : player.allIn ? 'ALL-IN' : h?.stage === 'finished' ? player.handName || 'Hand finished' : player.lastAction || (h ? 'In hand' : online?.ready ? 'Ready' : 'Waiting');
     const badges = seat.querySelector('.seat-badges');
     const role = h ? `${h.dealerId === player.id ? 'D' : ''}|${h.smallBlindId === player.id ? 'SB' : h.bigBlindId === player.id ? 'BB' : ''}` : '';
     if (badges.dataset.role !== role) { badges.dataset.role = role; badges.replaceChildren(...role.split('|').filter(Boolean).map(label => node('span', label === 'D' ? '' : 'blind', label))); }
@@ -94,52 +94,52 @@ function render(room) {
   $('room-code').textContent = room.code;
   $('players').replaceChildren(...room.players.map(player => {
     const row = document.createElement('li');
-    const name = document.createElement('span'); name.textContent = `${player.name}${player.id === session.playerId ? ' (sinä)' : ''}${player.host ? ' · host' : ''} · ${money(player.stack)}`;
-    const status = document.createElement('small'); status.textContent = !player.connected ? 'Poissa linjoilta' : player.ready ? '✓ Valmis' : 'Odottaa';
+    const name = document.createElement('span'); name.textContent = `${player.name}${player.id === session.playerId ? ' (you)' : ''}${player.host ? ' · host' : ''} · ${money(player.stack)}`;
+    const status = document.createElement('small'); status.textContent = !player.connected ? 'Offline' : player.ready ? '✓ Ready' : 'Waiting';
     row.append(name, status); return row;
   }));
-  $('ready').textContent = room.players.find(p => p.id === session.playerId)?.ready ? 'Peru valmius' : 'Olen valmis';
+  $('ready').textContent = room.players.find(p => p.id === session.playerId)?.ready ? 'Unready' : 'Ready';
   const me = room.players.find(p => p.id === session.playerId);
   $('player-count').textContent = `${room.players.length} / 6`;
   const playing = room.hand && room.hand.stage !== 'finished';
   $('start').classList.toggle('hidden', !me?.host);
-  $('start').textContent = room.hand ? 'Seuraava jako' : 'Aloita Hold’em';
+  $('start').textContent = room.hand ? 'Next hand' : 'Start Hold’em';
   const funded = room.players.filter(p => p.stack > 0 && p.connected);
   $('start').disabled = !connected || busy || playing || funded.length < 2 || funded.some(p => !p.ready);
   $('ready').disabled = !connected || busy || playing || me?.stack === 0;
   $('leave').disabled = !connected || busy || (playing && room.hand.seats.some(p => p.id === session.playerId));
   ui.syncRoom(room, previous);
   const ownSeat = room.hand?.seats.find(p => p.id === session.playerId);
-  $('hero-name').textContent = `${me?.name || ownSeat?.name || 'Sinä'} · oma käsi`;
+  $('hero-name').textContent = `${me?.name || ownSeat?.name || 'You'} · stack`;
   $('hero-stack').textContent = money(ownSeat?.stack ?? me?.stack ?? 0);
   const unready = funded.filter(p => !p.ready).length;
-  $('lobby-help').textContent = playing ? 'Jako on käynnissä. Pöydästä voi poistua jaon jälkeen.' : me?.stack === 0 ? 'Pelimerkkisi loppuivat. Voit seurata peliä tai poistua lobbystä.' : funded.length < 2 ? 'Kutsu ainakin yksi kaveri pöytään. Pelaamaan tarvitaan kaksi.' : unready ? `${unready} pelaajaa ei ole vielä valmiina.` : me?.host ? 'Porukka on valmis. Voit aloittaa jaon.' : 'Porukka on valmis. Odotetaan hostia.';
+  $('lobby-help').textContent = playing ? 'Hand in progress. Leave when your hand is over.' : me?.stack === 0 ? 'No chips remaining. Spectate or leave the lobby.' : funded.length < 2 ? 'Invite a friend. At least two players are required.' : unready ? `${unready} players are not ready.` : me?.host ? 'All players ready. Start the hand.' : 'All players ready. Waiting for the host.';
   renderSeats(room);
   if (!room.hand) {
-    $('hand-title').textContent = 'Pöytä odottaa teitä'; $('pot').textContent = '$0'; $('pot-label').textContent = 'POTTI'; $('pots').textContent = ''; $('turn-status').textContent = 'Odotetaan porukkaa'; $('turn-clock').textContent = '—';
-    cards($('board'), [], 5); cards($('hole'), [], 2, {back:true}); $('hand-name').textContent = 'Kortit jaetaan pian'; $('street').replaceChildren(); $('controls').classList.add('hidden'); $('results').classList.add('hidden');
-    $('waiting').classList.remove('hidden'); $('waiting').replaceChildren(node('strong', '', 'Kaikki alkaa yhdestä jaosta.'), node('span', '', 'Kutsu kaverit, merkitse itsesi valmiiksi ja anna hostin aloittaa.')); return;
+    $('hand-title').textContent = 'Waiting for players'; $('pot').textContent = '$0'; $('pot-label').textContent = 'POT'; $('pots').textContent = ''; $('turn-status').textContent = 'Waiting for players'; $('turn-clock').textContent = '—';
+    cards($('board'), [], 5); cards($('hole'), [], 2, {back:true}); $('hand-name').textContent = 'Waiting for cards'; $('street').replaceChildren(); $('controls').classList.add('hidden'); $('results').classList.add('hidden');
+    $('waiting').classList.remove('hidden'); $('waiting').replaceChildren(node('strong', '', 'Waiting for players'), node('span', '', 'Join the lobby and select Ready.')); return;
   }
   const h = room.hand;
-  $('hand-title').textContent = `Jako #${h.number} · ${stageNames[h.stage]}`;
+  $('hand-title').textContent = `Hand #${h.number} · ${stageNames[h.stage]}`;
   const winnings = h.results.reduce((sum, r) => sum + r.amount, 0);
-  $('pot').textContent = money(h.stage === 'finished' ? winnings : h.pot); $('pot-label').textContent = h.stage === 'finished' ? 'JAETTU' : 'POTTI';
+  $('pot').textContent = money(h.stage === 'finished' ? winnings : h.pot); $('pot-label').textContent = h.stage === 'finished' ? 'PAID OUT' : 'POT';
   if (previous?.hand && previous.hand.pot !== h.pot) { const pot = document.querySelector('.pot-display'); pot.classList.remove('changed'); void pot.offsetWidth; pot.classList.add('changed'); }
   const winnerCards = h.seats.filter(p => h.results.some(r => r.id === p.id)).flatMap(p => p.bestCards || []);
   cards($('board'), h.board, 5, {hand:h.number, winning: winnerCards});
-  $('pots').textContent = h.pots?.length > 1 && (h.stage === 'finished' || h.seats.some(p => p.allIn)) ? h.pots.map((pot, i) => `${pot.uncalled ? 'Avoin panos' : i === 0 ? 'Pääpotti' : 'Sivupotti ' + i}: ${money(pot.amount)}`).join(' · ') : '';
+  $('pots').textContent = h.pots?.length > 1 && (h.stage === 'finished' || h.seats.some(p => p.allIn)) ? h.pots.map((pot, i) => `${pot.uncalled ? 'Unmatched bet' : i === 0 ? 'Main pot' : 'Side pot ' + i}: ${money(pot.amount)}`).join(' · ') : '';
   const phaseKey = `${h.number}:${h.stage}`;
   if ($('street').dataset.key !== phaseKey) { $('street').dataset.key = phaseKey; $('street').replaceChildren(...['preflop', 'flop', 'turn', 'river'].map((phase, i, phases) => node('span', phase === h.stage ? 'active' : phases.indexOf(h.stage) > i || h.stage === 'finished' ? 'passed' : '', phase))); }
   const seat = h.seats.find(p => p.id === session.playerId);
   cards($('hole'), seat?.cards || [], 2, {back:!seat, hand:h.number, winning:h.results.some(r => r.id === session.playerId) ? seat?.bestCards : []});
   document.querySelector('.your-hand').classList.toggle('folded', Boolean(seat?.folded));
-  $('hand-name').textContent = seat?.folded ? 'Luovutit tämän jaon' : seat?.handName || (seat ? 'Kaksi omaa korttia' : 'Liityt mukaan seuraavaan jakoon');
+  $('hand-name').textContent = seat?.folded ? 'Folded' : seat?.handName || (seat ? '' : 'Playing next hand');
   $('controls').classList.toggle('hidden', !h.actions);
   const legal = h.actions;
   $('waiting').classList.toggle('hidden', Boolean(legal));
   if (!legal) {
     const actor = h.seats.find(p => p.id === h.turnId)?.name;
-    $('waiting').replaceChildren(node('strong', '', h.stage === 'finished' ? 'Jako pelattu.' : seat?.folded ? 'Tämä jako on ohi osaltasi.' : seat?.allIn ? 'Olet all-in.' : !seat ? 'Seuraat tätä jakoa.' : `${actor} pelaa.`), node('span', '', h.stage === 'finished' ? funded.length < 2 ? 'Seuraavaan jakoon tarvitaan kaksi pelaajaa, joilla on pelimerkkejä.' : me?.host ? 'Aloita seuraava jako, kun porukka on valmis.' : 'Host aloittaa seuraavan jaon.' : 'Pöydän tapahtumat päivittyvät automaattisesti.'));
+    $('waiting').replaceChildren(node('strong', '', h.stage === 'finished' ? 'Hand finished' : seat?.folded ? 'Folded' : seat?.allIn ? 'All-in' : !seat ? 'Spectating' : `${actor} is playing.`), node('span', '', h.stage === 'finished' ? funded.length < 2 ? 'Two players with chips are needed for the next hand.' : me?.host ? 'Start the next hand when everyone is ready.' : 'Waiting for the host.' : ''));
   }
   if (legal) {
     $('call').textContent = legal.canCheck ? 'Check' : `Call ${money(legal.call)}`;
@@ -152,7 +152,7 @@ function render(room) {
     if (raiseKey !== key) { raiseKey = key; $('raise').value = Math.min(legal.minRaiseTo, legal.maxRaiseTo); $('raise-slider').value = $('raise').value; }
     document.querySelectorAll('[data-preset]').forEach(button => button.disabled = !legal.canRaise || busy || !connected);
     $('raise-form').classList.toggle('hidden', !legal.canRaise);
-    $('action-help').textContent = legal.canCheck ? 'Sinun vuorosi · voit checkata ilman maksua.' : `Sinun vuorosi · maksettavaa ${money(legal.call)}${legal.call === seat?.stack ? ' (all-in)' : ''}.`;
+    $('action-help').textContent = legal.canCheck ? 'Your turn · check or bet' : `Your turn · call ${money(legal.call)}${legal.call === seat?.stack ? ' (all-in)' : ''}.`;
     updateRaiseCost();
   }
   $('results').classList.toggle('hidden', h.stage !== 'finished');
@@ -160,10 +160,10 @@ function render(room) {
   if ($('results').dataset.key !== resultKey) {
     $('results').dataset.key = resultKey;
     const winners = [...new Set(h.results.map(r => r.id))].map(id => { const list = h.results.filter(r => r.id === id); return `${list[0].name} +${money(list.reduce((sum, r) => sum + r.amount, 0))}`; });
-    $('results').replaceChildren(node('strong', '', winners.join(' · ')), ...h.results.map(r => node('div', '', `${h.pots.length > 1 ? r.pot === 0 ? 'Pääpotti · ' : 'Sivupotti ' + r.pot + ' · ' : ''}${r.name}: ${r.hand} — ${money(r.amount)}`)));
+    $('results').replaceChildren(node('strong', '', winners.join(' · ')), ...h.results.map(r => node('div', '', `${h.pots.length > 1 ? r.pot === 0 ? 'Main pot · ' : 'Side pot ' + r.pot + ' · ' : ''}${r.name}: ${r.hand} — ${money(r.amount)}`)));
   }
   $('history').replaceChildren(...h.log.map(message => { const li = document.createElement('li'); li.textContent = message; return li; }));
-  $('history-count').textContent = `${h.log.length} tapahtumaa`;
+  $('history-count').textContent = `${h.log.length} events`;
   if (previous?.hand && h.number === previous.hand.number && h.version !== previous.hand.version) {
     if (h.stage === 'finished') cue(h.results.some(r => r.id === session.playerId) ? 'win' : 'chip');
     else if (h.turnId === session.playerId && previous.hand.turnId !== session.playerId) cue('turn'); else if (h.pot !== previous.hand.pot) cue('chip');
@@ -175,14 +175,14 @@ function updateClock() {
   const h = currentRoom.hand;
   const name = h.seats.find(p => p.id === h.turnId)?.name;
   const seconds = Math.max(0, Math.ceil((currentRoom.deadline - Date.now() - clockOffset) / 1000));
-  $('turn-status').textContent = h.stage === 'finished' ? 'Jako päättyi' : `${h.turnId === session?.playerId ? 'Sinun vuorosi' : 'Vuorossa: ' + name}`;
+  $('turn-status').textContent = h.stage === 'finished' ? 'Hand finished' : `${h.turnId === session?.playerId ? 'Your turn' : 'Turn: ' + name}`;
   $('turn-clock').textContent = h.stage === 'finished' ? '✓' : `${seconds}`;
   document.querySelector('.turn-indicator').classList.toggle('yours', h.turnId === session?.playerId);
   document.querySelector('.turn-indicator').classList.toggle('urgent', h.stage !== 'finished' && seconds <= 10);
 }
 function updateRaiseCost() {
   const me = currentRoom?.hand?.seats.find(p => p.id === session?.playerId);
-  if (me) $('raise-cost').textContent = `Stackista lisää ${money(Math.max(0, Number($('raise').value) - me.bet))}`;
+  if (me) $('raise-cost').textContent = `From stack: ${money(Math.max(0, Number($('raise').value) - me.bet))}`;
 }
 setInterval(updateClock, 1000);
 function resetSession(message = '') {
@@ -204,9 +204,9 @@ async function connect() {
   while (!controller.signal.aborted && session?.token === token) {
     try {
       const response = await fetch('/api/events', { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal });
-      if (response.status === 401) { resetSession('Lobby on sulkeutunut tai palvelin on käynnistynyt uudelleen. Luo uusi lobby tai liity koodilla.'); return; }
-      if (!response.ok) throw new Error('Yhteys epäonnistui.');
-      connected = true; retries = 0; $('connection').textContent = '● Yhteys palvelimeen toimii'; $('connection').classList.remove('offline');
+      if (response.status === 401) { resetSession('Lobby closed or server restarted. Create or join a lobby.'); return; }
+      if (!response.ok) throw new Error('Connection failed.');
+      connected = true; retries = 0; $('connection').textContent = '● Connected'; $('connection').classList.remove('offline');
       const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = '';
       try {
         while (!controller.signal.aborted) {
@@ -221,7 +221,7 @@ async function connect() {
       } finally { await reader.cancel().catch(() => {}); }
     } catch { if (controller.signal.aborted) return; }
     if (controller.signal.aborted || session?.token !== token) return;
-    connected = false; $('connection').textContent = 'Yhteys katkesi — palautetaan…'; $('connection').classList.add('offline'); if (currentRoom) render(currentRoom);
+    connected = false; $('connection').textContent = 'Disconnected — palautetaan…'; $('connection').classList.add('offline'); if (currentRoom) render(currentRoom);
     await retryDelay(Math.min(1000 * 2 ** retries++, 10000), controller.signal);
   }
 }
@@ -231,12 +231,12 @@ async function join(path) {
   ui.saveName($('name').value);
   sessionStorage.setItem('casino-session', JSON.stringify(session)); render(session.room); connect();
 }
-function action(fn) { return async event => { event?.preventDefault(); if (busy) return; busy = true; setError(); if (session && currentRoom) render(currentRoom); try { await fn(); } catch (error) { if (error.status === 401) resetSession('Istunto päättyi. Liity lobbyyn uudelleen.'); else setError(error.message || 'Yhteys epäonnistui. Yritä uudelleen.'); } finally { busy = false; if (session && currentRoom) render(currentRoom); } }; }
+function action(fn) { return async event => { event?.preventDefault(); if (busy) return; busy = true; setError(); if (session && currentRoom) render(currentRoom); try { await fn(); } catch (error) { if (error.status === 401) resetSession('Session ended. Rejoin the lobby.'); else setError(error.message || 'Connection failed. Please retry.'); } finally { busy = false; if (session && currentRoom) render(currentRoom); } }; }
 $('create-form').onsubmit = action(() => join('/api/create'));
 $('join-form').onsubmit = action(() => join('/api/join'));
 $('ready').onclick = action(async () => render(await request('/api/ready')));
-$('copy').onclick = action(async () => { await navigator.clipboard.writeText($('room-code').textContent); $('copy').textContent = 'Kopioitu'; });
-$('invite').onclick = action(async () => { const url = new URL('/', location.origin); url.searchParams.set('room', currentRoom.code); await navigator.clipboard.writeText(url.href); $('invite').textContent = 'Kutsulinkki kopioitu'; });
+$('copy').onclick = action(async () => { await navigator.clipboard.writeText($('room-code').textContent); $('copy').textContent = 'Copied'; });
+$('invite').onclick = action(async () => { const url = new URL('/', location.origin); url.searchParams.set('room', currentRoom.code); await navigator.clipboard.writeText(url.href); $('invite').textContent = 'Invite link copied'; });
 $('start').onclick = action(async () => render(await request('/api/start')));
 async function pokerAction(kind, amount) {
   const h = currentRoom.hand;
@@ -257,8 +257,8 @@ document.querySelectorAll('[data-preset]').forEach(button => button.onclick = ()
 async function setSound(enabled) {
   try {
     if (enabled) { audioContext ||= new AudioContext(); await audioContext.resume(); }
-    soundOn = enabled; $('sound').textContent = soundOn ? 'Äänet päällä' : 'Äänet pois'; $('sound').setAttribute('aria-pressed', String(soundOn)); ui.saveSound(soundOn); if (enabled) cue('turn');
-  } catch { $('setting-sound').checked = false; setError('Ääniä ei voitu käynnistää. Kokeile uudelleen äänipainikkeesta.'); }
+    soundOn = enabled; $('sound').textContent = soundOn ? 'Sound on' : 'Sound off'; $('sound').setAttribute('aria-pressed', String(soundOn)); ui.saveSound(soundOn); if (enabled) cue('turn');
+  } catch { $('setting-sound').checked = false; setError('Audio could not start. Try the sound button again.'); }
 }
 $('sound').onclick = () => setSound(!soundOn);
 $('leave').onclick = action(async () => { await request('/api/leave'); resetSession(); });

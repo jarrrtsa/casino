@@ -16,8 +16,8 @@ test('all hand categories, ace-low straight, best five and kickers', () => {
 test('heads-up blinds, turn order, checks and fold settlement', () => {
   const p = players([1000, 1000]); const h = startHand(p, '0');
   assert.equal(h.seats[h.turn].id, '0'); assert.equal(h.seats[0].bet, 5); assert.equal(h.seats[1].bet, 10);
-  assert.throws(() => act(h, '1', 'check'), /vuoro/);
-  assert.throws(() => act(h, '0', 'check'), /maksaa/);
+  assert.throws(() => act(h, '1', 'check'), /Wait for your turn/);
+  assert.throws(() => act(h, '0', 'check'), /must call or fold/);
   act(h, '0', 'call'); assert.equal(h.stage, 'preflop'); act(h, '1', 'check');
   assert.equal(h.stage, 'flop'); assert.equal(h.seats[h.turn].id, '1');
   act(h, '1', 'fold'); assert.equal(h.stage, 'finished'); assert.equal(p[0].stack, 1010); assert.equal(p[1].stack, 990);
@@ -34,7 +34,7 @@ test('short all-in does not reopen betting; cumulative short raises do', () => {
   const h = startHand(players([1000, 15, 1000]), '0');
   act(h, '0', 'call'); act(h, '1', 'raise', 15); act(h, '2', 'call');
   assert.equal(viewHand(h, '0').actions.canRaise, false);
-  assert.throws(() => act(h, '0', 'raise', 30), /korottaa/); act(h, '0', 'call');
+  assert.throws(() => act(h, '0', 'raise', 30), /cannot raise/); act(h, '0', 'call');
   assert.equal(h.stage, 'flop');
   const cumulative = startHand(players([1000, 15, 20, 1000]), '0');
   act(cumulative, '3', 'call'); act(cumulative, '0', 'call'); act(cumulative, '1', 'raise', 15); act(cumulative, '2', 'raise', 20);

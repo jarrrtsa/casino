@@ -1,6 +1,6 @@
 import { randomInt } from 'node:crypto';
 
-export const HAND_NAMES = ['Hai', 'Pari', 'Kaksi paria', 'Kolmoset', 'Suora', 'Väri', 'Täyskäsi', 'Neloset', 'Värisuora'];
+export const HAND_NAMES = ['High card', 'Pair', 'Two pair', 'Three of a kind', 'Straight', 'Flush', 'Full house', 'Four of a kind', 'Straight flush'];
 export function compare(a, b) { for (let i = 0; i < Math.max(a.length, b.length); i++) { const diff = (a[i] || 0) - (b[i] || 0); if (diff) return diff; } return 0; }
 function five(cards) {
   const values = cards.map(c => c.rank).sort((a, b) => b - a);
@@ -22,7 +22,7 @@ export function evaluate(cards) {
   return evaluateDetailed(cards).score;
 }
 export function evaluateDetailed(cards) {
-  if (cards.length < 5 || cards.length > 7) throw new Error('Käden on sisällettävä 5–7 korttia.');
+  if (cards.length < 5 || cards.length > 7) throw new Error('A hand must contain 5–7 cards.');
   let best = []; let chosen = [];
   for (let a = 0; a < cards.length - 4; a++) for (let b = a + 1; b < cards.length - 3; b++) for (let c = b + 1; c < cards.length - 2; c++) for (let d = c + 1; d < cards.length - 1; d++) for (let e = d + 1; e < cards.length; e++) {
     const selection = [cards[a], cards[b], cards[c], cards[d], cards[e]];
@@ -52,7 +52,7 @@ export function potLayers(h) {
 function returnUncalled(h) {
   const sorted = [...h.seats].sort((a, b) => b.total - a.total);
   const difference = sorted[0].total - (sorted[1]?.total || 0);
-  if (difference > 0) { sorted[0].total -= difference; sorted[0].stack += difference; sorted[0].bet = Math.max(0, sorted[0].bet - difference); log(h, `${sorted[0].name}: palautus $${difference}`); }
+  if (difference > 0) { sorted[0].total -= difference; sorted[0].stack += difference; sorted[0].bet = Math.max(0, sorted[0].bet - difference); log(h, `${sorted[0].name}: refund $${difference}`); }
 }
 function finish(h) {
   returnUncalled(h);
@@ -67,7 +67,7 @@ function finish(h) {
     for (const p of eligible) { const diff = winners.length ? compare(values.get(p.id), values.get(winners[0].id)) : 1; if (diff > 0) winners = [p]; else if (!diff) winners.push(p); }
     // Odd chips go clockwise from the dealer.
     winners.sort((a, b) => ((h.seats.indexOf(a) - h.dealer - 1 + h.seats.length) % h.seats.length) - ((h.seats.indexOf(b) - h.dealer - 1 + h.seats.length) % h.seats.length));
-    winners.forEach((p, i) => { const won = Math.floor(amount / winners.length) + (i < amount % winners.length ? 1 : 0); p.stack += won; h.results.push({ id: p.id, name: p.name, amount: won, pot: index, hand: values.get(p.id) ? HAND_NAMES[values.get(p.id)[0]] : 'Muut luovuttivat' }); });
+    winners.forEach((p, i) => { const won = Math.floor(amount / winners.length) + (i < amount % winners.length ? 1 : 0); p.stack += won; h.results.push({ id: p.id, name: p.name, amount: won, pot: index, hand: values.get(p.id) ? HAND_NAMES[values.get(p.id)[0]] : 'Everyone else folded' }); });
   }
   for (const p of h.seats) p.player.stack = p.stack;
   log(h, h.results.map(r => `${r.name} +$${r.amount} (${r.hand})`).join(' · '));
@@ -94,7 +94,7 @@ function advance(h, from) {
 }
 export function startHand(players, dealerId, number = 1, deck = shuffledDeck()) {
   const funded = players.filter(p => p.stack > 0);
-  if (funded.length < 2) throw new Error('Tarvitaan vähintään kaksi pelaajaa, joilla on pelimerkkejä.');
+  if (funded.length < 2) throw new Error('At least two players with chips are required.');
   const h = { number, version: 0, seats: funded.map(p => ({ id: p.id, name: p.name, player: p, stack: p.stack, cards: [], bet: 0, total: 0, folded: false, actedAt: null, raiseSizeAtAction: 10 })), dealer: Math.max(0, funded.findIndex(p => p.id === dealerId)), deck: [...deck], board: [], stage: 'preflop', currentBet: 10, minRaise: 10, turn: null, log: [], results: [] };
   for (let round = 0; round < 2; round++) for (let i = 1; i <= h.seats.length; i++) h.seats[(h.dealer + i) % h.seats.length].cards.push(h.deck.pop());
   const sb = funded.length === 2 ? h.dealer : (h.dealer + 1) % funded.length;
@@ -102,7 +102,7 @@ export function startHand(players, dealerId, number = 1, deck = shuffledDeck()) 
   h.smallBlindId = h.seats[sb].id; h.bigBlindId = h.seats[bb].id;
   pay(h.seats[sb], 5); pay(h.seats[bb], 10);
   h.seats[sb].lastAction = 'Small blind'; h.seats[bb].lastAction = 'Big blind';
-  log(h, `Jako #${number} · blindit $5 / $10`);
+  log(h, `Hand #${number} · blinds $5 / $10`);
   advance(h, bb);
   return h;
 }
@@ -114,20 +114,20 @@ export function legalActions(h, id) {
 }
 export function act(h, id, action, amount) {
   const legal = legalActions(h, id);
-  if (!legal) throw new Error('Odota omaa vuoroasi.');
+  if (!legal) throw new Error('Wait for your turn.');
   const p = h.seats[h.turn]; const oldTurn = h.turn;
   if (action === 'fold') { p.folded = true; p.lastAction = 'Fold'; log(h, `${p.name}: fold`); }
-  else if (action === 'check') { if (!legal.canCheck) throw new Error('Sinun täytyy maksaa tai luovuttaa.'); p.lastAction = 'Check'; log(h, `${p.name}: check`); }
+  else if (action === 'check') { if (!legal.canCheck) throw new Error('You must call or fold.'); p.lastAction = 'Check'; log(h, `${p.name}: check`); }
   else if (action === 'call') { pay(p, legal.call); p.lastAction = p.stack === 0 ? 'All-in' : `Call $${legal.call}`; log(h, `${p.name}: call $${legal.call}${p.stack === 0 ? ' · all-in' : ''}`); }
   else if (action === 'raise') {
-    if (!legal.canRaise) throw new Error('Et voi korottaa tässä tilanteessa.');
-    if (!Number.isSafeInteger(amount) || amount > legal.maxRaiseTo || amount <= h.currentBet || (amount < legal.minRaiseTo && amount !== legal.maxRaiseTo)) throw new Error(`Korota vähintään $${legal.minRaiseTo} asti tai mene all-in.`);
+    if (!legal.canRaise) throw new Error('You cannot raise here.');
+    if (!Number.isSafeInteger(amount) || amount > legal.maxRaiseTo || amount <= h.currentBet || (amount < legal.minRaiseTo && amount !== legal.maxRaiseTo)) throw new Error(`Raise to at least $${legal.minRaiseTo} or go all-in.`);
     const raise = amount - h.currentBet;
     pay(p, amount - p.bet); h.currentBet = amount;
     if (raise >= h.minRaise) h.minRaise = raise;
     p.lastAction = p.stack === 0 ? 'All-in' : `Raise $${amount}`;
     log(h, `${p.name}: raise to $${amount}${p.stack === 0 ? ' · all-in' : ''}`);
-  } else throw new Error('Tuntematon toiminto.');
+  } else throw new Error('Unknown action.');
   p.actedAt = h.currentBet; p.raiseSizeAtAction = h.minRaise;
   h.version++; advance(h, oldTurn);
 }
