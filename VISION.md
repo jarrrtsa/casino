@@ -50,4 +50,4 @@ Yhteisen talouden pysyvä totuus on palvelimella tietokannassa. Selaimen localSt
 4. Pankki, tilastot, kosmetiikka ja progression ympäristöt.
 5. Muut casino-pelit, keksitty osakemarkkina, minipelit ja sivutehtävät.
 
-Nykyinen toteutus on vaihe 1. Hahmon nimi ja asetukset muistetaan selaimessa. NPC-pelaajia, yhteistä pysyvää saldoa, pankkia, kauppaa tai progression ehtoja ei vielä ole. Multiplayerin $1 000 on yhä lobbyn testistack; sitä ei esitetä hahmon pysyvänä lompakkona.
+Nykyinen paikallinen toteutus kattaa vaiheen 3 ja vaiheen 4 ensimmäisen version: SQLite-hahmo, yhteinen lompakko, NPC-Hold’em, pankki, ostettavat asut, XP/level ja neljä kodin ympäristöä. Ensimmäinen toimitusmuistiminipeli on pelattava. Kodit määräytyvät nykyisen levelin ja nettovarallisuuden (käteinen + pöytämerkit − velka) perusteella ja voivat myös laskea. Ensimmäiset tasapainotusrajat ovat README.md:ssä. Sokkojen ja NPC-vaikeuden progressio, laajempi hahmon muokkaus ja muut casino-pelit odottavat seuraavaa vaihetta. Nettiversioon tarvitaan pysyvä hosting-tallennus ja hahmon palautus ennen uuden talouden julkaisua.

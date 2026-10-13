@@ -47,7 +47,7 @@ Kutsulinkki sisältää vain huonekoodin, ei henkilökohtaista istuntotunnistett
 
 - Käytä **yhtä palvelininstanssia**. Lobbyt ovat prosessin muistissa; monta instanssia vaatisi yhteisen tilan tallennuksen.
 - Renderin Free-palvelu sammuu 15 minuutin käyttämättömyyden jälkeen ja käynnistyy uudelleen seuraavasta pyynnöstä. Käynnistyminen voi kestää noin minuutin. Palvelinrestart, deploy tai sammuminen hävittää tämän version lobbyt ja stackit.
-- Ei vielä pysyvää hahmoa, lompakkoa tai velkoja. Pelissä käytetään vain virtuaalisia pelimerkkejä.
+- Uusi paikallinen versio tallentaa hahmon, lompakon ja velat SQLiteen. Nykyinen Free-hostaus ei takaa tiedoston pysyvyyttä deployn tai palvelimen korvaamisen yli. Järjestä pysyvä tallennus ennen uuden talousversion julkaisemista pitkäaikaiseen käyttöön. Pelissä käytetään vain virtuaalista pelirahaa.
 - Yhteyskatkolla on noin 2 minuutin paluuaika. Kesken jaon pelaajan paikka säilyy jaon loppuun; sen jälkeen poissa oleva istunto siivotaan. Hostin jäädessä pois hänen tehtävänsä siirtyy paikalla olevalle.
 - Palvelin rajoittaa liittymisyrityksiä ja yhtäaikaisia yhteyksiä sekä siivoaa hylätyt lobbyt. Nämä ovat kaveriporukan kokeilun perussuojaukset, eivät laajan julkisen palvelun kapasiteetti- tai turva-auditointi.
 - Ei tunneloida kotikonetta tai avata reitittimen portteja: Render ajaa palvelimen ja tarjoaa HTTPS:n.
@@ -56,6 +56,6 @@ Kutsulinkki sisältää vain huonekoodin, ei henkilökohtaista istuntotunnistett
 
 - **Sivu aukeaa, pelaajat eivät päivity:** tarkista Renderin lokit ja `/health`. SSE-yhteyden tulee pysyä auki; sen vastaustyyppi on `text/event-stream`.
 - **Build epäonnistuu:** `npm test` täytyy mennä läpi ja kaikki `public/`- sekä `test/`-tiedostot täytyy olla repositoryssä.
-- **Lobby katosi:** palvelin on todennäköisesti käynnistynyt uudelleen. Luo uusi lobby. Pysyvä tallennus lisätään seuraavassa vaiheessa.
+- **Lobby katosi:** palvelin on todennäköisesti käynnistynyt uudelleen. Saman SQLite-tiedoston avaaminen palauttaa pöytämerkit lompakkoon. Jos hosting hävitti tiedoston, hahmoa ei voi palauttaa tällä versiolla.
 
 Ohjeet: [Render Web Services](https://render.com/docs/web-services), [Blueprint-asetukset](https://render.com/docs/blueprint-spec), [Free-palvelun rajat](https://render.com/docs/free).

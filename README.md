@@ -1,51 +1,48 @@
 # Casino Royale
 
-Paikallinen selainpeli, jossa on yhteinen 2–6 pelaajan lobby ja pelattava No-limit Texas Hold’em.
-
-[Ota peli käyttöön Renderissä](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2Fjarrrtsa%2Fcasino). Valmis Blueprint käyttää Free-palvelua. Kirjaudu Renderiin ja yhdistä tämä repository; tarkat ohjeet ovat [DEPLOYMENT.md](DEPLOYMENT.md).
+Selainpohjainen casino-RPG: yhteinen hahmo ja pelirahaa käyttävä lompakko NPC-Hold’emille ja kaverien 2–6 pelaajan online-pöydille. Ei oikeaa rahaa tai palkintoja. Käyttöliittymä on englanniksi.
 
 ## Käynnistys
 
-Node.js 20 tai uudempi. Ulkoisia npm-paketteja ei vielä tarvita.
+Node.js **24 tai uudempi**, ei ulkoisia npm-riippuvuuksia.
 
 ```powershell
 npm run dev
 ```
 
-Avaa http://localhost:3000 kahdessa eri selainprofiilissa tai toisessa ikkunassa incognito-tilassa. Luo lobby, kopioi koodi ja liity toisesta ikkunasta. Molemmat painavat **Olen valmis**, sitten host painaa **Aloita Hold’em**. Aloitusstack on $1 000 ja blindit $5/$10. Pelaajalista ja pelitila päivittyvät palvelimen kautta. Sivun päivitys palauttaa saman istunnon.
+Avaa http://localhost:3000. Luo hahmo, valitse Singleplayer tai Multiplayer. NPC-pöydässä Mara ja Jules ovat valmiina: paina Start Hold’em. Multiplayerissa host luo lobbyn ja jakaa kutsulinkin; osallistujat valitsevat Ready ennen hostin aloitusta. Jokainen pelaaja tarvitsee eri selainprofiilin, incognito-istunnon tai laitteen. Saman selainprofiilin välilehdet käyttävät samaa hahmoa ja palauttavat saman pöytäistunnon.
 
-Palvelin jakaa kortit, tarkistaa panostukset ja vuorot sekä ratkaisee parhaan viiden kortin käden seitsemästä. Fold, check, call, raise ja all-in sekä sivupotit ja tasapelit ovat mukana. Korotus tarkoittaa tämän panostuskierroksen kokonaispanosta. Jakajan paikka kiertää jakojen välillä. Vuoroaika on 60 sekuntia; ajan loppuessa palvelin tekee checkin tai foldin. Yhteyskatko ei poista pelaajaa kesken jaon.
+## Pelattavat ominaisuudet
 
-## Tämän version rajat
+- Hahmo aloittaa $1,000 käteisellä, levelillä 1 ja sillan alla. Nimi, vaatetusväri, omistetut asut, velka, XP, kädet ja voitot tallentuvat palvelimelle.
+- Yksi pöytä kerrallaan. Buy-in $100–$1,000 siirtyy lompakosta pöytään. Pöydästä poistuminen palauttaa jäljellä olevat merkit. Poistuminen onnistuu oman jaon päätyttyä.
+- No-limit Hold’em, $5/$10 blindit: fold/check/call/raise/all-in, sivupotit, tasapelit, jakajan kierto ja 60 sekunnin vuoroaika. NPC:t käyttävät vain omia korttejaan ja yhteistä pöytää.
+- Pelattu käsi antaa 15 XP; voittava käsi lisäksi 25 XP. Jokainen 100 XP nostaa leveliä. Kosmetiikka ostetaan pelirahalla ja avautuu leveleittäin.
+- Pankista voi ottaa yhden $500 lainan, kun käteistä on enintään $100. Uutta lainaa saa vasta velan maksettua kokonaan. Osittaiset takaisinmaksut onnistuvat.
+- Delivery route -muistiminipeli: toista neljän pysähdyksen reitti ja ansaitse $30. Seuraava toimitus on saatavilla 15 sekunnin jälkeen.
+- Kodit: silta → vuokra-asunto (level 2 / $1,000) → loft (level 5 / $10,000) → kartano (level 10 / $100,000). Varallisuus = käteinen + pöytään sidotut merkit − velka. Koti valitaan aina nykyisten ehtojen mukaan; se voi myös laskea. Multiplayerin ympäristö valitaan hostin kodista lobbya luotaessa.
+- Hahmon poistaminen vaatii nimen kirjoittamisen. Se poistaa pysyvästi hahmon talouden, historian, XP:n ja kosmetiikan.
 
-- Lobbyt ja istunnot ovat palvelimen muistissa ja katoavat palvelimen uudelleenkäynnistyksessä.
-- Ei vielä pysyviä hahmoja, saldoja, velkoja tai kirjautumista.
-- Pelimerkit säilyvät lobbyssä jakojen välillä. Ne eivät ole vielä pysyvä lompakko. Nollaan päätynyt pelaaja seuraa peliä; uutta jakoa varten tarvitaan kaksi pelaajaa, joilla on pelimerkkejä.
-- Kesken jaon liittynyt pelaaja odottaa seuraavaa jakoa. Pöydästä voi poistua oman jaon päätyttyä.
-- Kehitystilassa palvelin kuuntelee vain omaa konetta. Tuotantotilassa se kuuntelee hostingin verkkorajapintaa ja `PORT`-muuttujaa.
-- Hylätyt istunnot siivotaan noin kahden minuutin jälkeen, kesken jaon vasta sen päätyttyä. Vuoroaika suojaa peliä yhteyskatkoilta. Poissa olevan hostin tehtävä siirtyy toiselle pelaajalle.
-- Kaveriporukan kokeiluversio: liittymisyritysten ja yhteyksien rajoitukset ovat mukana, pysyvä tallennus ja laajan julkisen palvelun suojaus eivät vielä.
+Summat, XP-rajat ja NPC-strategia ovat ensimmäinen tasapainotusversio. Blackjack, ruletti, slots, osakemarkkina, lisää minipelejä, hiustyylit ja tasosta riippuvat blindit/NPC-vaikeus tulevat myöhemmin. Singleplayer tarvitsee tässä versiossa palvelinyhteyden; offline-tilaa ei ole.
 
-## Seuraavat vaiheet
+## Tallennus ja hosting
 
-1. Päävalikon ja kodin ilmeen arviointi, sitten Hold’emin ulkoasun, animaatioiden ja käyttökokemuksen viimeistely. Nettihostaus on käytössä; katso [DEPLOYMENT.md](DEPLOYMENT.md).
-2. Pysyvät hahmot ja yhteinen talous, sitten NPC-Hold’em.
-3. Pankki, tilastot, kosmetiikka ja progression ympäristöt; myöhemmin muut pelit. Tarkempi järjestys on [VISION.md](VISION.md).
+SQLite-tietokanta on oletuksena `data/casino.sqlite` (gitignore). `CASINO_DB_PATH` voi osoittaa eri levyyn. Pysäytä palvelin ennen tietokannan varmuuskopiointia; älä poista `data/`-hakemistoa, jos haluat säilyttää hahmot. Selain säilyttää hahmon salaisen käyttöavaimen localStoragessa. Selaindatan poistaminen menettää pääsyn hahmoon: kirjautumista, laitteiden välistä palautusta tai salasanan palautusta ei vielä ole.
 
-## The Basement -ulkoasu
+Lobbyt ovat yhä prosessin muistissa. Kun sama tietokanta avataan uudelleenkäynnistyksen jälkeen, pöytään sidotut merkit palautetaan kerran lompakkoon. Kesken jäänyt käsi palauttaa kunkin oman jäljellä olevan stackin ja sitoutuneet panokset. Pelaa yhdellä palvelinprosessilla; tietokantaa ei saa jakaa samanaikaisesti usean prosessin kesken.
 
-Pelin päivitetty visio ja toteutusjärjestys ovat [VISION.md](VISION.md): singleplayer casino-RPG, jonka omalla hahmolla ja saldolla voi myöhemmin liittyä kaveripöytiin. Hahmon koti on suoraan pelin aloitusnäkymä. Oikean reunan valikossa ovat singleplayer, multiplayer, hahmo, pankki, minipelit ja asetukset. NPC-pöydät, talous ja kosmetiikka ovat selvästi merkittyjä tulevia toimintoja. Käyttöliittymä on englanniksi.
+**Renderin nykyinen Free-palvelu ei takaa SQLite-tiedoston pysyvyyttä deployn tai palvelimen korvaamisen yli.** Tämä versio on ensin paikalliseen testaukseen. Ennen nettipäivitystä tarvitaan pysyvä levy tai ulkoinen tietokanta sekä hahmon palautusmenetelmä. Katso [DEPLOYMENT.md](DEPLOYMENT.md). Blueprintin automaattinen deploy on pois käytöstä.
 
-Pelikuori täyttää selaimen näkymän. Lobby on sivulle avautuva piilotettava paneeli. Omat kortit ovat pöydän etureunassa ilman erillistä laatikkoa; saldo ja panostukset ovat samassa alareunan ohjaimessa. `public/shell.js` hoitaa valikoiden navigoinnin ja selainkohtaiset nimi-/asetusmuistot; `public/shell.css` hoitaa niiden asettelun. Kodin vektorikuva on `public/assets/home.svg`.
+## Grafiikka ja rakenne
 
-Ensimmäinen ympäristö on hämärä kellari: perspektiivipöytä, sikaria polttava jakaja ja pelkistetyt pelaajahahmot. Omat SVG-grafiikat ovat tiedostoissa `public/assets/cellar.svg`, `public/assets/dealer.svg` ja `public/assets/avatars.svg`. Ne ovat muokattavia vektoreita, eikä kuvageneraattoria tai ulkoisia kuvapankkeja ole käytetty. Jakaja on oma kerroksensa, jotta hahmon mittasuhteet säilyvät eri näytöillä. Oma käsi näkyy alareunassa. Hahmojen muokkaus ja ympäristöjen progression vaiheet tulevat myöhemmin.
+Omat SVG-kuvat käyttävät kerroksittaisia siluetteja, rajattua väripalettia ja pehmeää lämmintä valoa. Referenssikuvia ei sisällytetä peliin. `public/assets/bridge.svg`, `home.svg`, `loft.svg`, `mansion.svg` ovat kodit; `table-*.svg` niiden pokeriversiot. `characters.svg` sisältää kokovartalohahmot, `dealer.svg` jakajan. Alkuperäinen kellarikuvitus on säilytetty myöhempää käyttöä varten.
 
-Korttien ja pelimerkkien liike, savu, vuoroilmaisin ja voittavan viiden kortin korostus ovat CSS-animaatioita. Vähennetyn liikkeen käyttöjärjestelmäasetus poistaa animaatiot. Äänet voi kytkeä päälle yläpalkista; nykyiset lyhyet WebAudio-äänet ovat väliaikaisia ja korvattavissa omilla äänitiedostoilla. Korotuksen kokonaispanos ja stackista menevä lisäsumma näkyvät erikseen. Sivun päivitys säilyttää istunnon myös uuden käyttöliittymän kanssa.
+`public/character.js` hoitaa hahmon, pankin ja minipelin käyttöliittymän, `shell.js` navigoinnin ja `app.js` pokerin. `rpg.css` sisältää uuden ilmeen. `economy.mjs` hoitaa SQLite-tapahtumat ja pöytävaraukset; `bots.mjs` NPC-päätökset. Palvelin tarkistaa kaikki rahamuutokset. Lainat, ostot, takaisinmaksut ja jaon XP käyttävät uusintapyyntöjä kestäviä tapahtumatunnisteita.
 
 ## Testaus
 
-`npm test` tarkistaa lobbyä ja pokerisääntöjä: käsien arvotus, heads-up-vuorot, sivupotit, palautukset, pienet all-init, tasapelit ja pelimerkkien säilyminen. Panostuksen uudelleen avautuminen seuraa [Poker TDA:n no-limit-sääntöä](https://www.pokertda.com/view-poker-tda-rules/).
+```powershell
+npm test
+```
 
-Lobbyssä **Kopioi kutsulinkki** tekee liittymislinkin, jonka huonekoodi täyttyy automaattisesti. Henkilökohtainen istuntotunniste lähetetään palvelimelle HTTP-otsakkeessa, eikä sitä sisällytetä linkkeihin. Samassa selaimessa eri välilehdet voivat olla eri pelaajia.
-
-Tämä riippuvuukseton JavaScript-runko varmistaa ensin lobby-yhteyden. Laajempaan pelimoottoriin siirryttäessä arvioidaan TypeScript/React/Colyseus-pohja.
+Testit kattavat pokerisäännöt, pelimerkkien säilymisen, online-lobbyn käyttöoikeudet ja katkokset, NPC-käsien etenemisen, jaetun hahmolompakon, lainat, kosmetiikan levelrajat, palkkioiden uusintapyynnöt, XP:n ja tallennuksen palautumisen. Sivun päivitys palauttaa aktiivisen pöytäistunnon. Paikallisen selaintarkistuksen lisäksi nettiversio tarvitsee oman monilaitekokeilun ennen julkaisua.
