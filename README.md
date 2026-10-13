@@ -28,9 +28,15 @@ Palvelin jakaa kortit, tarkistaa panostukset ja vuorot sekä ratkaisee parhaan v
 
 ## Seuraavat vaiheet
 
-1. Nettihostaus ja oikeiden yhteyskatkojen testaus. Katso [DEPLOYMENT.md](DEPLOYMENT.md): Render-asetukset ovat valmiina.
+1. Hold’emin ulkoasun, animaatioiden ja käyttökokemuksen viimeistely kaveriporukan palautteella. Nettihostaus on käytössä; katso [DEPLOYMENT.md](DEPLOYMENT.md).
 2. Pysyvät profiilit, rahaliikenteen tapahtumat, pankkivelat ja tilastot.
 3. Botit, blackjack, ruletti ja progression ulkoasut.
+
+## The Basement -ulkoasu
+
+Ensimmäinen ympäristö on hämärä kellari: perspektiivipöytä, sikaria polttava jakaja ja pelkistetyt pelaajahahmot. Omat SVG-grafiikat ovat tiedostoissa `public/assets/cellar.svg` ja `public/assets/avatars.svg`. Ne ovat muokattavia vektoreita, eikä kuvageneraattoria tai ulkoisia kuvapankkeja ole käytetty. Pelaajan paikka kiertää näkymässä alareunaan. Hahmojen muokkaus ja ympäristöjen progression vaiheet tulevat myöhemmin.
+
+Korttien ja pelimerkkien liike, savu, vuoroilmaisin ja voittavan viiden kortin korostus ovat CSS-animaatioita. Vähennetyn liikkeen käyttöjärjestelmäasetus poistaa animaatiot. Äänet voi kytkeä päälle yläpalkista; nykyiset lyhyet WebAudio-äänet ovat väliaikaisia ja korvattavissa omilla äänitiedostoilla. Korotuksen kokonaispanos ja stackista menevä lisäsumma näkyvät erikseen. Sivun päivitys säilyttää istunnon myös uuden käyttöliittymän kanssa.
 
 ## Testaus
 

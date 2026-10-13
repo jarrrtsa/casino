@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <symbol id="player" viewBox="0 0 100 100">
+    <path class="avatar-shirt" d="M9 100V81q3-23 27-26h28q24 3 27 26v19z" fill="currentColor"/>
+    <path fill="#20202b" d="m36 57 14 17 14-17-2 43H38z"/>
+    <path fill="#ac8067" d="M39 45h22v20q-11 12-22 0z"/>
+    <path fill="#d5ab87" stroke="#171c28" stroke-width="3" d="M26 21q2-18 24-18t24 18v25q-3 21-24 23-21-2-24-23z"/>
+    <path fill="#ad806c" d="M52 8q20 0 20 14v24q-3 17-20 20z"/>
+    <path fill="#26242f" d="M24 31q-11-32 26-31 39 1 26 32l-10-15-23 6-12-8z"/>
+    <path d="M34 36h8m17 0h8" stroke="#26242f" stroke-width="4" stroke-linecap="round"/>
+    <path d="m50 40-3 10h7m-13 8h17" stroke="#8b6058" stroke-width="3" stroke-linecap="round"/>
+    <path d="m24 82 7 18m45-18-7 18" stroke="#131b27" stroke-width="3" opacity=".5"/>
+  </symbol>
+  <symbol id="cap" viewBox="0 0 100 100">
+    <use href="#player"/>
+    <path fill="#30364b" stroke="#141b27" stroke-width="3" d="M22 27q0-28 29-27t28 27z"/>
+    <path fill="#566078" stroke="#141b27" stroke-width="3" d="m22 24 54 0 8 10-43 2z"/>
+    <path d="M49 8v13" stroke="#8392a2" stroke-width="3"/>
+  </symbol>
+  <symbol id="glasses" viewBox="0 0 100 100">
+    <use href="#player"/>
+    <path fill="#d0b291" stroke="#272632" stroke-width="3" d="M28 32h19v14H29zm25 0h19v14H53z"/>
+    <path d="M47 36h6" stroke="#272632" stroke-width="3"/>
+    <path fill="#4a3540" d="m35 55 15 4 15-4-5 8H40z"/>
+  </symbol>
+  <symbol id="beanie" viewBox="0 0 100 100">
+    <use href="#player"/>
+    <path fill="#695058" stroke="#191d28" stroke-width="3" d="M24 26q-5-29 26-29 31 0 26 29z"/>
+    <path fill="#876871" stroke="#191d28" stroke-width="3" d="M24 20h52v10H24z"/>
+    <path d="M33 2v14m11-17v15M56 0v15m11-12v13" stroke="#a38689" stroke-width="2" opacity=".5"/>
+  </symbol>
+</svg>

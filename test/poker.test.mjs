@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { evaluate, compare, startHand, act, viewHand, shuffledDeck } from '../poker.mjs';
+import { evaluate, evaluateDetailed, potLayers, compare, startHand, act, viewHand, shuffledDeck } from '../poker.mjs';
 const card = text => ({ rank: '23456789TJQKA'.indexOf(text[0]) + 2, suit: text[1] });
 const cards = text => text.split(' ').map(card);
 const players = stacks => stacks.map((stack, i) => ({ id: String(i), name: `P${i}`, stack }));
@@ -47,6 +47,25 @@ test('invalid raises do not mutate state and cards remain private', () => {
   assert.equal(h.version, 0); assert.equal(h.seats[0].stack, 995);
   const view = viewHand(h, '0'); assert.equal(view.seats[0].cards.length, 2); assert.equal(view.seats[1].cards.length, 0);
   assert.equal(view.deck, undefined); assert.equal(view.seats[1].player, undefined);
+  assert.deepEqual(view.seats[1].bestCards, []); assert.equal(view.seats[1].handName, null);
+});
+test('winning five-card selection is accurate and opponent hints stay private on the flop', () => {
+  const best = evaluateDetailed(cards('As Ad Ac Ks Kd Kc 2s'));
+  assert.deepEqual(best.score, [6, 14, 13]); assert.equal(best.cards.length, 5);
+  assert.deepEqual(best.cards.map(c => c.rank).sort((a, b) => b - a), [14, 14, 14, 13, 13]);
+  const h = startHand(players([1000, 1000, 1000]), '0');
+  act(h, '0', 'call'); act(h, '1', 'call'); act(h, '2', 'check');
+  const view = viewHand(h, '0'); assert.equal(view.seats[0].bestCards.length, 5);
+  for (const opponent of view.seats.slice(1)) { assert.deepEqual(opponent.bestCards, []); assert.equal(opponent.handName, null); }
+  assert.equal(view.smallBlindId, '1'); assert.equal(view.bigBlindId, '2');
+});
+test('pot display distinguishes outstanding unmatched bet from contested side pots', () => {
+  const h = startHand(players([100, 200, 300]), '0');
+  act(h, '0', 'raise', 100);
+  assert.ok(potLayers(h).some(p => p.uncalled));
+  act(h, '1', 'raise', 200); act(h, '2', 'call');
+  const view = viewHand(h, '0'); assert.deepEqual(view.pots.map(p => p.amount), [300, 200]);
+  assert.ok(view.pots.every(p => !p.uncalled)); assert.equal(view.results.reduce((s, r) => s + r.amount, 0), 500);
 });
 test('board tie splits pot, and an odd chip goes left of dealer', () => {
   const p = players([1000, 1000, 1000]);

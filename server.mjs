@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { startHand, act, viewHand, legalActions } from './poker.mjs';
 
-const publicFiles = new Map([['/', ['index.html', 'text/html']], ['/app.js', ['app.js', 'text/javascript']], ['/style.css', ['style.css', 'text/css']]]);
+const publicFiles = new Map([['/', ['index.html', 'text/html']], ['/app.js', ['app.js', 'text/javascript']], ['/style.css', ['style.css', 'text/css']], ['/assets/cellar.svg', ['assets/cellar.svg', 'image/svg+xml']], ['/assets/avatars.svg', ['assets/avatars.svg', 'image/svg+xml']]]);
 export function createServer(options = {}) {
 const rooms = new Map();
 const sessions = new Map();
@@ -43,7 +43,7 @@ function allowRequest(key, limit) {
   return ++bucket.count <= limit;
 }
 function snapshot(room, id) {
-  return { code: room.code, players: room.players.map(p => ({ id: p.id, name: p.name, stack: room.hand?.seats.find(s => s.id === p.id)?.stack ?? p.stack, ready: p.ready, host: p.id === room.host, connected: Boolean(streams.get(p.id)?.size) })), stage: room.hand ? 'table' : 'lobby', hand: viewHand(room.hand, id), deadline: room.deadline || null };
+  return { code: room.code, players: room.players.map(p => ({ id: p.id, name: p.name, stack: room.hand?.seats.find(s => s.id === p.id)?.stack ?? p.stack, ready: p.ready, host: p.id === room.host, connected: Boolean(streams.get(p.id)?.size) })), stage: room.hand ? 'table' : 'lobby', hand: viewHand(room.hand, id), deadline: room.deadline || null, serverTime: now(), turnDuration: options.turnMs ?? 60000 };
 }
 function broadcast(room) {
   for (const p of room.players) for (const stream of streams.get(p.id) || []) stream.write(`data: ${JSON.stringify(snapshot(room, p.id))}\n\n`);
