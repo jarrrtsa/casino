@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { startHand, act, viewHand, legalActions } from './poker.mjs';
 
-const publicFiles = new Map([['/', ['index.html', 'text/html']], ['/app.js', ['app.js', 'text/javascript']], ['/style.css', ['style.css', 'text/css']], ['/assets/cellar.svg', ['assets/cellar.svg', 'image/svg+xml']], ['/assets/avatars.svg', ['assets/avatars.svg', 'image/svg+xml']]]);
+const publicFiles = new Map([['/', ['index.html', 'text/html']], ['/app.js', ['app.js', 'text/javascript']], ['/shell.js', ['shell.js', 'text/javascript']], ['/style.css', ['style.css', 'text/css']], ['/shell.css', ['shell.css', 'text/css']], ['/assets/dealer.svg', ['assets/dealer.svg', 'image/svg+xml']], ['/assets/home.svg', ['assets/home.svg', 'image/svg+xml']], ['/assets/cellar.svg', ['assets/cellar.svg', 'image/svg+xml']], ['/assets/avatars.svg', ['assets/avatars.svg', 'image/svg+xml']]]);
 export function createServer(options = {}) {
 const rooms = new Map();
 const sessions = new Map();

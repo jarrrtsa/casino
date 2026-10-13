@@ -1,3 +1,4 @@
+import { createShell } from './shell.js';
 const $ = id => document.getElementById(id);
 let session;
 let events;
@@ -8,6 +9,7 @@ let clockOffset = 0;
 let raiseKey = '';
 let soundOn = false;
 let audioContext;
+const ui = createShell({ getRoom: () => currentRoom, onLeave: () => $('leave').click(), onSound: enabled => setSound(enabled), onError: text => setError(text) });
 const money = value => `$${value.toLocaleString('en-US')}`;
 const stageNames = { preflop: 'Preflop', flop: 'Flop', turn: 'Turn', river: 'River', finished: 'Jako päättyi' };
 const cardKey = c => `${c.rank}${c.suit}`;
@@ -89,8 +91,7 @@ function render(room) {
   if (currentRoom?.code === room.code && currentRoom?.hand && room.hand && (currentRoom.hand.number > room.hand.number || (currentRoom.hand.number === room.hand.number && currentRoom.hand.version > room.hand.version))) return;
   const previous = currentRoom; if (room.serverTime) clockOffset = room.serverTime - Date.now();
   currentRoom = room;
-  document.querySelector('main').classList.add('in-room'); $('table').classList.remove('hidden');
-  $('entry').classList.add('hidden'); $('lobby').classList.remove('hidden'); $('room-code').textContent = room.code;
+  $('room-code').textContent = room.code;
   $('players').replaceChildren(...room.players.map(player => {
     const row = document.createElement('li');
     const name = document.createElement('span'); name.textContent = `${player.name}${player.id === session.playerId ? ' (sinä)' : ''}${player.host ? ' · host' : ''} · ${money(player.stack)}`;
@@ -107,6 +108,10 @@ function render(room) {
   $('start').disabled = !connected || busy || playing || funded.length < 2 || funded.some(p => !p.ready);
   $('ready').disabled = !connected || busy || playing || me?.stack === 0;
   $('leave').disabled = !connected || busy || (playing && room.hand.seats.some(p => p.id === session.playerId));
+  ui.syncRoom(room, previous);
+  const ownSeat = room.hand?.seats.find(p => p.id === session.playerId);
+  $('hero-name').textContent = `${me?.name || ownSeat?.name || 'Sinä'} · oma käsi`;
+  $('hero-stack').textContent = money(ownSeat?.stack ?? me?.stack ?? 0);
   const unready = funded.filter(p => !p.ready).length;
   $('lobby-help').textContent = playing ? 'Jako on käynnissä. Pöydästä voi poistua jaon jälkeen.' : me?.stack === 0 ? 'Pelimerkkisi loppuivat. Voit seurata peliä tai poistua lobbystä.' : funded.length < 2 ? 'Kutsu ainakin yksi kaveri pöytään. Pelaamaan tarvitaan kaksi.' : unready ? `${unready} pelaajaa ei ole vielä valmiina.` : me?.host ? 'Porukka on valmis. Voit aloittaa jaon.' : 'Porukka on valmis. Odotetaan hostia.';
   renderSeats(room);
@@ -128,7 +133,7 @@ function render(room) {
   const seat = h.seats.find(p => p.id === session.playerId);
   cards($('hole'), seat?.cards || [], 2, {back:!seat, hand:h.number, winning:h.results.some(r => r.id === session.playerId) ? seat?.bestCards : []});
   document.querySelector('.your-hand').classList.toggle('folded', Boolean(seat?.folded));
-  $('hand-name').textContent = seat?.folded ? 'Luovutit tämän jaon' : seat?.handName || (seat ? `Stack ${money(seat.stack)}` : 'Liityt mukaan seuraavaan jakoon');
+  $('hand-name').textContent = seat?.folded ? 'Luovutit tämän jaon' : seat?.handName || (seat ? 'Kaksi omaa korttia' : 'Liityt mukaan seuraavaan jakoon');
   $('controls').classList.toggle('hidden', !h.actions);
   const legal = h.actions;
   $('waiting').classList.toggle('hidden', Boolean(legal));
@@ -182,7 +187,7 @@ function updateRaiseCost() {
 setInterval(updateClock, 1000);
 function resetSession(message = '') {
   events?.abort(); sessionStorage.removeItem('casino-session'); session = null; currentRoom = null; connected = false;
-  $('lobby').classList.add('hidden'); $('table').classList.add('hidden'); document.querySelector('main').classList.remove('in-room'); $('entry').classList.remove('hidden'); raiseKey = '';
+  ui.returnHome(); raiseKey = '';
   setError(message);
 }
 function retryDelay(ms, signal) {
@@ -223,6 +228,7 @@ async function connect() {
 async function join(path) {
   setError();
   session = await request(path, { name: $('name').value, code: $('code').value });
+  ui.saveName($('name').value);
   sessionStorage.setItem('casino-session', JSON.stringify(session)); render(session.room); connect();
 }
 function action(fn) { return async event => { event?.preventDefault(); if (busy) return; busy = true; setError(); if (session && currentRoom) render(currentRoom); try { await fn(); } catch (error) { if (error.status === 401) resetSession('Istunto päättyi. Liity lobbyyn uudelleen.'); else setError(error.message || 'Yhteys epäonnistui. Yritä uudelleen.'); } finally { busy = false; if (session && currentRoom) render(currentRoom); } }; }
@@ -248,8 +254,16 @@ document.querySelectorAll('[data-preset]').forEach(button => button.onclick = ()
   const value = ({ min: legal.minRaiseTo, half: h.currentBet + Math.round((h.pot + legal.call) / 2), pot: h.currentBet + h.pot + legal.call, max: legal.maxRaiseTo })[button.dataset.preset];
   $('raise').value = Math.min(legal.maxRaiseTo, Math.max(Math.min(legal.minRaiseTo, legal.maxRaiseTo), value)); $('raise-slider').value = $('raise').value; updateRaiseCost();
 });
-$('sound').onclick = async () => { soundOn = !soundOn; if (soundOn) { audioContext ||= new AudioContext(); await audioContext.resume(); } $('sound').textContent = soundOn ? 'Äänet päällä' : 'Äänet pois'; $('sound').setAttribute('aria-pressed', String(soundOn)); cue('turn'); };
+async function setSound(enabled) {
+  try {
+    if (enabled) { audioContext ||= new AudioContext(); await audioContext.resume(); }
+    soundOn = enabled; $('sound').textContent = soundOn ? 'Äänet päällä' : 'Äänet pois'; $('sound').setAttribute('aria-pressed', String(soundOn)); ui.saveSound(soundOn); if (enabled) cue('turn');
+  } catch { $('setting-sound').checked = false; setError('Ääniä ei voitu käynnistää. Kokeile uudelleen äänipainikkeesta.'); }
+}
+$('sound').onclick = () => setSound(!soundOn);
 $('leave').onclick = action(async () => { await request('/api/leave'); resetSession(); });
 const inviteCode = new URL(location.href).searchParams.get('room');
-if (inviteCode && /^[A-F0-9]{6}$/i.test(inviteCode)) $('code').value = inviteCode.toUpperCase();
-try { const stored = sessionStorage.getItem('casino-session'); if (stored) { session = JSON.parse(stored); render(await request('/api/session')); connect(); } } catch { sessionStorage.removeItem('casino-session'); session = null; }
+const hasInvite = inviteCode && /^[A-F0-9]{6}$/i.test(inviteCode);
+if (hasInvite) $('code').value = inviteCode.toUpperCase();
+try { const stored = sessionStorage.getItem('casino-session'); if (stored) { session = JSON.parse(stored); render(await request('/api/session')); connect(); } } catch { resetSession(); }
+if (hasInvite && !session) ui.ensureProfile('entry');

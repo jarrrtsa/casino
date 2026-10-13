@@ -28,13 +28,17 @@ Palvelin jakaa kortit, tarkistaa panostukset ja vuorot sekä ratkaisee parhaan v
 
 ## Seuraavat vaiheet
 
-1. Hold’emin ulkoasun, animaatioiden ja käyttökokemuksen viimeistely kaveriporukan palautteella. Nettihostaus on käytössä; katso [DEPLOYMENT.md](DEPLOYMENT.md).
-2. Pysyvät profiilit, rahaliikenteen tapahtumat, pankkivelat ja tilastot.
-3. Botit, blackjack, ruletti ja progression ulkoasut.
+1. Päävalikon ja kodin ilmeen arviointi, sitten Hold’emin ulkoasun, animaatioiden ja käyttökokemuksen viimeistely. Nettihostaus on käytössä; katso [DEPLOYMENT.md](DEPLOYMENT.md).
+2. Pysyvät hahmot ja yhteinen talous, sitten NPC-Hold’em.
+3. Pankki, tilastot, kosmetiikka ja progression ympäristöt; myöhemmin muut pelit. Tarkempi järjestys on [VISION.md](VISION.md).
 
 ## The Basement -ulkoasu
 
-Ensimmäinen ympäristö on hämärä kellari: perspektiivipöytä, sikaria polttava jakaja ja pelkistetyt pelaajahahmot. Omat SVG-grafiikat ovat tiedostoissa `public/assets/cellar.svg` ja `public/assets/avatars.svg`. Ne ovat muokattavia vektoreita, eikä kuvageneraattoria tai ulkoisia kuvapankkeja ole käytetty. Pelaajan paikka kiertää näkymässä alareunaan. Hahmojen muokkaus ja ympäristöjen progression vaiheet tulevat myöhemmin.
+Pelin päivitetty visio ja toteutusjärjestys ovat [VISION.md](VISION.md): singleplayer casino-RPG, jonka omalla hahmolla ja saldolla voi myöhemmin liittyä kaveripöytiin. Nyt päävalikosta pääsee nimettyyn hahmoon, omaan kotiin tai multiplayeriin. NPC-pöydät, talous ja kosmetiikka ovat selvästi merkittyjä tulevia toimintoja.
+
+Pelikuori täyttää selaimen näkymän. Lobby on sivulle avautuva piilotettava paneeli; oma käsi, potti, vuoro, tulokset ja panostukset ovat pelimaailman päällä. `public/shell.js` hoitaa valikoiden navigoinnin ja selainkohtaiset nimi-/asetusmuistot; `public/shell.css` hoitaa niiden asettelun. Kodin vektorikuva on `public/assets/home.svg`.
+
+Ensimmäinen ympäristö on hämärä kellari: perspektiivipöytä, sikaria polttava jakaja ja pelkistetyt pelaajahahmot. Omat SVG-grafiikat ovat tiedostoissa `public/assets/cellar.svg`, `public/assets/dealer.svg` ja `public/assets/avatars.svg`. Ne ovat muokattavia vektoreita, eikä kuvageneraattoria tai ulkoisia kuvapankkeja ole käytetty. Jakaja on oma kerroksensa, jotta hahmon mittasuhteet säilyvät eri näytöillä. Oma käsi näkyy alareunassa. Hahmojen muokkaus ja ympäristöjen progression vaiheet tulevat myöhemmin.
 
 Korttien ja pelimerkkien liike, savu, vuoroilmaisin ja voittavan viiden kortin korostus ovat CSS-animaatioita. Vähennetyn liikkeen käyttöjärjestelmäasetus poistaa animaatiot. Äänet voi kytkeä päälle yläpalkista; nykyiset lyhyet WebAudio-äänet ovat väliaikaisia ja korvattavissa omilla äänitiedostoilla. Korotuksen kokonaispanos ja stackista menevä lisäsumma näkyvät erikseen. Sivun päivitys säilyttää istunnon myös uuden käyttöliittymän kanssa.
 

@@ -23,23 +23,6 @@
   <path d="M69 590v58m-38-37h94" stroke="#292631" stroke-width="3"/>
   <path fill="#35313a" d="m1034 582 123 23v70l-123-23z"/><path fill="#46404a" d="m1034 582 28-15 124 23-29 15z"/>
   <path d="m1070 588 0 70m32-63v70m-59-44 100 19" stroke="#292631" stroke-width="3"/>
-  <!-- Dealer, deliberately behind the table. -->
-  <path fill="#101620" d="M499 351q-5-79 47-95h108q47 16 47 95z"/>
-  <path fill="#434048" d="m548 260 52 43 51-43-23-23h-57z"/>
-  <path fill="#99776a" d="M574 215h52v55q-26 33-52 0z"/>
-  <path fill="#b9997b" stroke="#1a1b24" stroke-width="5" d="M557 152q-1-44 43-45 46 2 46 45v61q-8 40-46 42-34-4-43-42z"/>
-  <path fill="#80645e" d="M605 133h33v78q-5 26-33 36z"/>
-  <path fill="#29242c" d="M551 164q-11-61 48-66 66 3 50 67l-13-30-19-2-18 8-32-8z"/>
-  <path fill="#25252d" d="m555 178 44-5v24l-41 4zm50-5 42 5-4 23-38-4z"/>
-  <path stroke="#101820" stroke-width="5" d="M599 182h8m-52 1-12-4m104 4 10-4"/>
-  <path d="m603 196-7 18h12" stroke="#785a54" stroke-width="4" stroke-linecap="round"/>
-  <path fill="#4d3f41" d="M572 214q27 17 58 0v20q-29 23-56-3z"/>
-  <path d="M582 224h27" stroke="#b08871" stroke-width="3" stroke-linecap="round"/>
-  <path fill="#64463b" stroke="#2c252b" stroke-width="3" d="m604 224 64-11 3 12-65 10z"/><path fill="#d4784a" d="m661 214 7-1 3 12-8 1z"/><path fill="#edb977" d="m667 216 3 6-4 1z"/>
-  <path fill="#1e2531" d="m545 265 35 40-25 39 33 11-19 42h-52zm111 0-38 40 26 39-32 11 18 42h51z"/>
-  <path stroke="#626065" stroke-width="2" d="m581 284 18 69 19-69"/>
-  <path fill="#101722" d="m521 323-48 56 83 20 15-37zm158 0 50 56-83 20-15-37z"/>
-  <path fill="#ab8972" d="m544 360 32 2 20 19-8 18-51-10zm117 0-30 2-20 19 8 18 51-10z"/>
   <!-- Table: flat vectors, perspective and layered edge. -->
   <path fill="#10141d" d="M127 555q0-180 473-180t473 180v79q0 124-473 124T127 634z"/>
   <ellipse cx="600" cy="560" rx="495" ry="176" fill="#392d32" stroke="#121a20" stroke-width="8"/>
