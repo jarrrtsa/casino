@@ -9,7 +9,7 @@ let clockOffset = 0;
 let raiseKey = '';
 let soundOn = false;
 let audioContext;
-const ui = createShell({ getRoom: () => currentRoom, onLeave: () => $('leave').click(), onSound: enabled => setSound(enabled), onError: text => setError(text), onSingleplayer: buyIn => join('/api/singleplayer',buyIn), onIdentityChange: () => resetSession() });
+const ui = createShell({ getRoom: () => currentRoom, onLeave: () => $('leave').click(), onSound: enabled => setSound(enabled), onError: text => setError(text), onSingleplayer: buyIn => join('/api/singleplayer',buyIn), onHomePoker:buyIn=>join('/api/home/poker',buyIn), onIdentityChange: () => resetSession() });
 const money = value => `$${value.toLocaleString('en-US')}`;
 const stageNames = { preflop: 'Preflop', flop: 'Flop', turn: 'Turn', river: 'River', finished: 'Hand finished' };
 const cardKey = c => `${c.rank}${c.suit}`;
@@ -250,7 +250,7 @@ $('create-form').onsubmit = action(() => join('/api/create'));
 $('join-form').onsubmit = action(() => join('/api/join'));
 $('ready').onclick = action(async () => render(await request('/api/ready')));
 $('copy').onclick = action(async () => { await navigator.clipboard.writeText($('room-code').textContent); $('copy').textContent = 'Copied'; });
-$('invite').onclick = action(async () => { const url = new URL('/', location.origin); url.searchParams.set('room', currentRoom.code); await navigator.clipboard.writeText(url.href); $('invite').textContent = 'Invite link copied'; });
+$('invite').onclick = action(async () => { const url = new URL('/', location.origin); url.searchParams.set(currentRoom.homeCode?'home':'room', currentRoom.homeCode||currentRoom.code); await navigator.clipboard.writeText(url.href); $('invite').textContent = 'Invite link copied'; });
 $('start').onclick = action(async () => render(await request('/api/start')));
 async function pokerAction(kind, amount) {
   const h = currentRoom.hand;

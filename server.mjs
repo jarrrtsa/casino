@@ -22,6 +22,7 @@ export function createServer(options = {}) {
 const economy = createEconomy(options.dbPath || ':memory:', options.now || Date.now);
 const jobs = new Map();
 const rooms = new Map();
+const homeTables = new Map();
 const sessions = new Map();
 const streams = new Map();
 const requests = new Map();
@@ -39,7 +40,7 @@ function removeSession(token, session) {
   for (const stream of streams.get(player.id) || []) stream.end();
   streams.delete(player.id);
   if (room.host === player.id) room.host = (room.players.find(p => streams.get(p.id)?.size) || room.players[0])?.id;
-  if (!room.players.length || room.singleplayer) { clearTimeout(room.timer); rooms.delete(room.code); } else broadcast(room);
+  if (!room.players.length || room.singleplayer) { clearTimeout(room.timer); rooms.delete(room.code);if(room.homeLobbyId)homeTables.delete(room.homeLobbyId); } else broadcast(room);
 }
 function cleanup() {
   homes.cleanup();
@@ -61,7 +62,7 @@ function allowRequest(key, limit) {
   return ++bucket.count <= limit;
 }
 function snapshot(room, id) {
-  return { code: room.code, singleplayer: Boolean(room.singleplayer), environment: room.environment || 'bridge', players: room.players.map(p => ({ id: p.id, name: p.name, appearance:p.appearance, bot:Boolean(p.bot), npc:npcPublicProfile(p), stack: room.hand?.seats.find(s => s.id === p.id)?.stack ?? p.stack, ready: p.ready, host: p.id === room.host, connected: p.bot || Boolean(streams.get(p.id)?.size) })), character: room.players.find(p=>p.id===id)?.characterId ? economy.view(room.players.find(p=>p.id===id).characterId) : null, stage: room.hand ? 'table' : 'lobby', hand: viewHand(room.hand, id), deadline: room.deadline || null, serverTime: now(), turnDuration: options.turnMs ?? 60000 };
+  return { code: room.code, homeCode:room.homeCode||null, singleplayer: Boolean(room.singleplayer), environment: room.environment || 'bridge', players: room.players.map(p => ({ id: p.id, name: p.name, appearance:p.appearance, bot:Boolean(p.bot), npc:npcPublicProfile(p), stack: room.hand?.seats.find(s => s.id === p.id)?.stack ?? p.stack, ready: p.ready, host: p.id === room.host, connected: p.bot || Boolean(streams.get(p.id)?.size) })), character: room.players.find(p=>p.id===id)?.characterId ? economy.view(room.players.find(p=>p.id===id).characterId) : null, stage: room.hand ? 'table' : 'lobby', hand: viewHand(room.hand, id), deadline: room.deadline || null, serverTime: now(), turnDuration: options.turnMs ?? 60000 };
 }
 function broadcast(room) {
   for (const p of room.players) for (const stream of streams.get(p.id) || []) stream.write(`data: ${JSON.stringify(snapshot(room, p.id))}\n\n`);
@@ -114,7 +115,7 @@ async function body(req) {
       }
       const characterToken=req.headers['x-character-token'] || (url.pathname.startsWith('/api/character') || url.pathname.startsWith('/api/wallet') || url.pathname.startsWith('/api/job') || url.pathname.startsWith('/api/home/') ? req.headers.authorization?.replace(/^Bearer /,'') : null);
       const characterId=economy.authenticate(characterToken);
-      if(req.method==='POST' && url.pathname.startsWith('/api/home/')) {
+      if(req.method==='POST' && url.pathname.startsWith('/api/home/') && url.pathname!=='/api/home/poker') {
         if(!characterId)return reply(res,401,{error:'Create or restore your character first.'});
         if(!allowRequest(`character:${characterId}`,120)){res.setHeader('Retry-After','60');return reply(res,429,{error:'Too many requests. Wait a minute.'});}
         if(['/api/home/create','/api/home/join'].includes(url.pathname)&&!allowRequest(`home-join:${req.socket.remoteAddress}`,creationLimit)){
@@ -173,7 +174,7 @@ async function body(req) {
         }
         return reply(res,200,economy.mutate(characterId,data.operation,url.pathname.endsWith('borrow')?'borrow':url.pathname.endsWith('repay')?'repay':'customize',data));
       }
-      if (req.method === 'POST' && ['/api/create', '/api/join', '/api/singleplayer'].includes(url.pathname)) {
+      if (req.method === 'POST' && ['/api/create', '/api/join', '/api/singleplayer','/api/home/poker'].includes(url.pathname)) {
         cleanup();
         if (!allowRequest(`join:${req.socket.remoteAddress}`, creationLimit)) { res.setHeader('Retry-After', '60'); return reply(res, 429, { error: 'Too many join attempts. Wait a minute.' }); }
         const data = await body(req);
@@ -183,13 +184,22 @@ async function body(req) {
         const name = character?.name || (typeof data.name === 'string' ? data.name.trim().slice(0, 24) : '');
         if (!name) return reply(res, 400, { error: 'Enter a player name.' });
         let room;
-        if (url.pathname === '/api/create' || url.pathname==='/api/singleplayer') {
+        let home;
+        if(url.pathname==='/api/home/poker'){
+          if(!characterId)return reply(res,401,{error:'Create or restore your character first.'});
+          home=homes.view(characterId);
+          if(!home)return reply(res,409,{error:'Join a home lobby before entering its poker table.'});
+          room=rooms.get(homeTables.get(home.id));
+          if(!room&&home.hostId!==characterId)return reply(res,409,{error:'The home host must open the poker table first.'});
+        }
+        if (url.pathname === '/api/create' || url.pathname==='/api/singleplayer'||(home&&!room)) {
           if (rooms.size >= roomLimit) return reply(res, 503, { error: 'Server full. Try again later.' });
           let code;
           do { code = randomBytes(3).toString('hex').toUpperCase(); } while (rooms.has(code));
-          room = { id:randomUUID(), code, host: null, players: [], singleplayer:url.pathname==='/api/singleplayer',environment:character?.home.id||'bridge' };
-        } else { room = rooms.get(String(data.code || '').trim().toUpperCase()); }
+          room = { id:randomUUID(), code, host: null, players: [], singleplayer:url.pathname==='/api/singleplayer',environment:home?.environment||character?.home.id||'bridge',homeLobbyId:home?.id||null,homeCode:home?.code||null };
+        } else if(!home) { room = rooms.get(String(data.code || '').trim().toUpperCase()); }
         if (!room) return reply(res, 404, { error: 'Lobby not found. Check the code.' });
+        if(room.homeLobbyId&&homes.view(characterId)?.id!==room.homeLobbyId)return reply(res,403,{error:'Join this home lobby before entering its poker table.'});
         if(url.pathname==='/api/join' && room.singleplayer)return reply(res,403,{error:'NPC tables are private singleplayer games.'});
         if (room.players.length >= 6) return reply(res, 409, { error: 'Table full (6 players).' });
         const token = randomBytes(32).toString('hex');
@@ -199,6 +209,7 @@ async function body(req) {
         room.players.push(player);
         if(room.singleplayer)room.players.push(...createNpcSeats(chips));
         rooms.set(room.code,room);
+        if(home)homeTables.set(home.id,room.code);
         sessions.set(token, { room, player }); broadcast(room);
         return reply(res, 200, { token, playerId: player.id, room: snapshot(room, player.id) });
       }

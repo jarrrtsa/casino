@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 
 const reject=(status,message)=>{throw Object.assign(new Error(message),{status});};
 
@@ -23,7 +23,7 @@ export function createHomeLobbies({character,now=Date.now,maxMembers=6,maxRooms=
   }
   function roomFor(id){return rooms.get(memberships.get(id));}
   function snapshot(room){
-    return {code:room.code,hostId:room.hostId,homeOwnerId:room.ownerId,environment:room.environment,
+    return {id:room.id,code:room.code,hostId:room.hostId,homeOwnerId:room.ownerId,environment:room.environment,
       capacity:maxMembers,players:[...room.members.keys()].map(id=>{
         const c=character(id);return {id,name:c.name,appearance:{outfit:c.outfit,color:c.color},host:id===room.hostId};
       })};
@@ -36,7 +36,7 @@ export function createHomeLobbies({character,now=Date.now,maxMembers=6,maxRooms=
       const c=character(id);if(c.inTable)reject(409,'Return home from your poker table first.');
       if(rooms.size>=maxRooms)reject(503,'Home lobbies are full. Try again later.');
       let code;do{code=randomBytes(3).toString('hex').toUpperCase();}while(rooms.has(code));
-      const room={code,ownerId:id,hostId:id,environment:c.home.id,members:new Map([[id,now()]])};
+      const room={id:randomUUID(),code,ownerId:id,hostId:id,environment:c.home.id,members:new Map([[id,now()]])};
       rooms.set(code,room);memberships.set(id,code);return snapshot(room);
     },
     join(id,input){

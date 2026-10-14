@@ -5,7 +5,7 @@ import { createHomeSocialClient } from './home-social.mjs';
 function stored(key) { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } }
 function remember(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* The current session remains usable when storage is unavailable. */ } }
 
-export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer, onIdentityChange }) {
+export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer, onHomePoker, onIdentityChange }) {
   let profile = null;
   const preferences = stored(SETTINGS_KEY) || {};
   let lobbyOpen = false;
@@ -81,7 +81,7 @@ export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer
   $('home-social-open').onclick=()=>openHome();
   $('home').addEventListener('home-interact',event=>{
     if(document.body.dataset.screen!=='home'||document.querySelector('dialog[open]'))return;
-    if(event.detail?.target==='poker')character.open('singleplayer');
+    if(event.detail?.target==='poker'){if(social.home)openHome();else character.open('singleplayer');}
     else if(event.detail?.target==='computer'){
       $('feature-title').textContent='Computer';$('feature-description').textContent='Online casino games are coming later.';$('feature-info').showModal();
     }
@@ -155,6 +155,7 @@ export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer
   $('home-create').onclick=()=>void homeAction(()=>social.create());
   $('home-join-form').onsubmit=event=>{event.preventDefault();void homeAction(()=>social.join($('home-join-code').value));};
   $('home-leave').onclick=()=>void homeAction(()=>social.leave());
+  $('home-poker-enter').onclick=()=>void homeAction(()=>onHomePoker(Number($('home-poker-buyin').value)));
   $('home-transfer-form').onsubmit=event=>{event.preventDefault();void homeAction(()=>social.transfer($('home-host-target').value));};
   $('home-copy').onclick=()=>void homeAction(async()=>{
     if(!social.home)return;const url=new URL('/',location.origin);url.searchParams.set('home',social.home.code);$('home-invite-url').value=url.href;$('home-invite-result').classList.remove('hidden');
@@ -175,6 +176,7 @@ export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer
     openHome,
     saveSound(value) { preferences.sound = value; remember(SETTINGS_KEY, preferences); $('setting-sound').checked = value; },
     syncRoom(room, previous) {
+      $('home-social-dialog').close();
       $('entry').close(); showScreen('table'); $('lobby').classList.remove('hidden');
       const environment=['bridge','rental','loft','mansion'].includes(room.environment)?room.environment:'bridge';
       const asset=environment==='rental'?'home':environment;
