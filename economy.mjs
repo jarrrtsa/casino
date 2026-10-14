@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
@@ -24,7 +24,11 @@ export function createEconomy(path = ':memory:', now = Date.now) {
     CREATE TABLE IF NOT EXISTS characters (id TEXT PRIMARY KEY, token TEXT UNIQUE NOT NULL, data TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS leases (character TEXT PRIMARY KEY REFERENCES characters(id), session TEXT UNIQUE, chips INTEGER NOT NULL CHECK(chips >= 0));
     CREATE TABLE IF NOT EXISTS ledger (id INTEGER PRIMARY KEY, character TEXT, kind TEXT, delta INTEGER, created INTEGER);
-    CREATE TABLE IF NOT EXISTS operations (character TEXT, operation TEXT, response TEXT, PRIMARY KEY(character, operation));`);
+    CREATE TABLE IF NOT EXISTS operations (character TEXT, operation TEXT, response TEXT, PRIMARY KEY(character, operation));
+    CREATE TABLE IF NOT EXISTS recovery_keys (character TEXT PRIMARY KEY REFERENCES characters(id) ON DELETE CASCADE, digest TEXT UNIQUE NOT NULL);
+    CREATE TABLE IF NOT EXISTS creation_tokens (digest TEXT PRIMARY KEY, character TEXT);`);
+  // Preserve legacy creation credentials before any access-key rotation.
+  db.exec('INSERT OR IGNORE INTO creation_tokens SELECT token,id FROM characters');
   const get = id => { const row = db.prepare('SELECT data FROM characters WHERE id=?').get(id); if (!row) throw new Error('Character not found.'); return JSON.parse(row.data); };
   const save = c => db.prepare('UPDATE characters SET data=? WHERE id=?').run(JSON.stringify(c), c.id);
   function transaction(fn) { db.exec('BEGIN IMMEDIATE'); try { const result = fn(); db.exec('COMMIT'); return result; } catch (error) { db.exec('ROLLBACK'); throw error; } }
@@ -46,14 +50,39 @@ export function createEconomy(path = ':memory:', now = Date.now) {
       if (typeof operation !== 'string' || !/^[a-f0-9-]{36}$/.test(operation)) throw new Error('Missing creation key.');
       // A browser keeps this random key for retries until it receives its credential.
       const token = createHash('sha256').update(`character:${operation}`).digest('hex');
+      const original = db.prepare('SELECT character FROM creation_tokens WHERE digest=?').get(hash(token));
       const existing = db.prepare('SELECT id FROM characters WHERE token=?').get(hash(token));
       if (existing) return { token, character: view(existing.id) };
+      if (original) throw new Error('Creation key has expired. Restore your character instead.');
       name=typeof name==='string' ? name.trim().slice(0,24) : ''; if (!name) throw new Error('Enter a character name.');
       const c={ id:randomUUID(), name, cash:1000, debt:0, xp:0, hands:0, wins:0, earned:0, owned:['hoodie'], outfit:'hoodie', color:'blue', created:now(), lastJob:0 };
-      transaction(()=>{db.prepare('INSERT INTO characters VALUES(?,?,?)').run(c.id,hash(token),JSON.stringify(c));log(c,'Starting funds',1000);});
+      transaction(()=>{db.prepare('INSERT INTO characters VALUES(?,?,?)').run(c.id,hash(token),JSON.stringify(c));db.prepare('INSERT INTO creation_tokens VALUES(?,?)').run(hash(token),c.id);log(c,'Starting funds',1000);});
       return {token,character:view(c.id)};
     },
     view,
+    issueRecovery(id) {
+      return transaction(() => {
+        const c = get(id); idle(c);
+        const recoveryKey = randomBytes(32).toString('hex');
+        db.prepare('INSERT INTO recovery_keys VALUES(?,?) ON CONFLICT(character) DO UPDATE SET digest=excluded.digest').run(id,hash(recoveryKey));
+        return { recoveryKey };
+      });
+    },
+    recover(recoveryKey) {
+      if (typeof recoveryKey !== 'string' || !/^[a-f0-9]{64}$/.test(recoveryKey)) return null;
+      return transaction(() => {
+        const row = db.prepare('SELECT character FROM recovery_keys WHERE digest=?').get(hash(recoveryKey));
+        if (!row) return null;
+        const c = get(row.character);
+        if (db.prepare('SELECT 1 FROM leases WHERE character=?').get(c.id)) {
+          const error = new Error('Return home from your table before restoring your character.');
+          error.status = 409; throw error;
+        }
+        const token = randomBytes(32).toString('hex');
+        db.prepare('UPDATE characters SET token=? WHERE id=?').run(hash(token),c.id);
+        return { token, character: view(c.id) };
+      });
+    },
     mutate(id, operation, kind, data = {}) {
       if (typeof operation !== 'string' || operation.length < 16 || operation.length > 80) throw new Error('Missing operation key.');
       return transaction(()=>{
@@ -91,7 +120,7 @@ export function createEconomy(path = ':memory:', now = Date.now) {
       }});
     },
     cashOut(id) { return transaction(()=>{const lease=db.prepare('SELECT chips FROM leases WHERE character=?').get(id);if(!lease)return view(id);const c=get(id);c.cash+=lease.chips;save(c);db.prepare('DELETE FROM leases WHERE character=?').run(id);log(c,'Table cash-out',lease.chips);return view(id);}); },
-    remove(id, name) { return transaction(()=>{const c=get(id);idle(c);if(name!==c.name)throw new Error('Type your character name to confirm deletion.');db.prepare('DELETE FROM operations WHERE character=?').run(id);db.prepare('DELETE FROM ledger WHERE character=?').run(id);db.prepare('DELETE FROM characters WHERE id=?').run(id);}); },
+    remove(id, name) { return transaction(()=>{const c=get(id);idle(c);if(name!==c.name)throw new Error('Type your character name to confirm deletion.');db.prepare('DELETE FROM operations WHERE character=?').run(id);db.prepare('DELETE FROM ledger WHERE character=?').run(id);db.prepare('UPDATE creation_tokens SET character=NULL WHERE character=?').run(id);db.prepare('DELETE FROM characters WHERE id=?').run(id);}); },
     close() {db.close();}
   };
 }

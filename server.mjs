@@ -105,14 +105,29 @@ async function body(req) {
       }
       const characterToken=req.headers['x-character-token'] || (url.pathname.startsWith('/api/character') || url.pathname.startsWith('/api/wallet') || url.pathname.startsWith('/api/job') ? req.headers.authorization?.replace(/^Bearer /,'') : null);
       const characterId=economy.authenticate(characterToken);
+      if(req.method==='POST' && url.pathname==='/api/character/recover') {
+        if(!allowRequest(`recovery:${req.socket.remoteAddress}`,options.recoveryLimit ?? 10)) {
+          res.setHeader('Retry-After','60');return reply(res,429,{error:'Too many recovery attempts. Wait a minute.'});
+        }
+        const data=await body(req);
+        const restored=economy.recover(data.recoveryKey);
+        if(!restored)return reply(res,401,{error:'Invalid recovery key.'});
+        jobs.delete(restored.character.id);
+        // Recovery only succeeds without a table lease; invalidate any residual sessions.
+        for(const [key,s] of sessions)if(s.player.characterId===restored.character.id)removeSession(key,s);
+        return reply(res,200,restored);
+      }
       if(req.method==='POST' && url.pathname==='/api/character/create') {
         if(!allowRequest(`join:${req.socket.remoteAddress}`,creationLimit))return reply(res,429,{error:'Too many character creations. Wait a minute.'});
         const data=await body(req);return reply(res,200,economy.create(data.name,data.operation));
       }
-      if(req.method==='POST' && ['/api/character','/api/character/customize','/api/character/delete','/api/wallet/borrow','/api/wallet/repay','/api/job/start','/api/job/finish'].includes(url.pathname)) {
+      if(req.method==='POST' && ['/api/character','/api/character/customize','/api/character/delete','/api/character/recovery-key','/api/wallet/borrow','/api/wallet/repay','/api/job/start','/api/job/finish'].includes(url.pathname)) {
         if(!characterId)return reply(res,401,{error:'Create or restore your character first.'});
         if(!allowRequest(`character:${characterId}`,120))return reply(res,429,{error:'Too many requests. Wait a minute.'});
         const data=await body(req);
+        // A credential may have been revoked while this request body was arriving.
+        if(economy.authenticate(characterToken)!==characterId)return reply(res,401,{error:'Create or restore your character first.'});
+        if(url.pathname==='/api/character/recovery-key')return reply(res,200,economy.issueRecovery(characterId));
         if(url.pathname==='/api/character'){
           const active=[...sessions.entries()].find(([,s])=>s.player.characterId===characterId);
           return reply(res,200,{...economy.view(characterId),session:active?{token:active[0],playerId:active[1].player.id,room:snapshot(active[1].room,active[1].player.id)}:null});
@@ -137,6 +152,7 @@ async function body(req) {
         cleanup();
         if (!allowRequest(`join:${req.socket.remoteAddress}`, creationLimit)) { res.setHeader('Retry-After', '60'); return reply(res, 429, { error: 'Too many join attempts. Wait a minute.' }); }
         const data = await body(req);
+        if(characterToken && economy.authenticate(characterToken)!==characterId)return reply(res,401,{error:'Create or restore your character first.'});
         const character=characterId ? economy.view(characterId) : null;
         if(options.requireCharacters && !character)return reply(res,401,{error:'Create a character before joining a table.'});
         const name = character?.name || (typeof data.name === 'string' ? data.name.trim().slice(0, 24) : '');
@@ -207,7 +223,7 @@ async function body(req) {
         return reply(res, 200, { ok: true });
       }
       reply(res, 404, { error: 'Page not found.' });
-    } catch (error) { reply(res, 400, { error: error.message || 'Unable to process request.' }); }
+    } catch (error) { reply(res, error.status || 400, { error: error.message || 'Unable to process request.' }); }
   });
   const housekeeping = setInterval(cleanup, options.cleanupMs ?? 10000);
   housekeeping.unref();
