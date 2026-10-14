@@ -8,6 +8,7 @@ import { createEconomy } from './economy.mjs';
 import { botAction } from './bots.mjs';
 import { createNpcSeats, npcProfile, npcPublicProfile } from './npc-roster.mjs';
 import { createHomeLobbies } from './home-lobby.mjs';
+import { createHomePresence } from './home-presence.mjs';
 
 const publicFiles = new Map([['/', ['index.html', 'text/html']], ['/app.js', ['app.js', 'text/javascript']], ['/shell.js', ['shell.js', 'text/javascript']], ['/style.css', ['style.css', 'text/css']], ['/shell.css', ['shell.css', 'text/css']], ['/assets/dealer.svg', ['assets/dealer.svg', 'image/svg+xml']], ['/assets/home.svg', ['assets/home.svg', 'image/svg+xml']], ['/assets/cellar.svg', ['assets/cellar.svg', 'image/svg+xml']], ['/assets/avatars.svg', ['assets/avatars.svg', 'image/svg+xml']]]);
 for(const name of ['bridge','loft','mansion','characters','table-bridge','table-home','table-loft','table-mansion'])publicFiles.set(`/assets/${name}.svg`,[`assets/${name}.svg`,'image/svg+xml']);
@@ -27,7 +28,15 @@ const sessions = new Map();
 const streams = new Map();
 const requests = new Map();
 const now = options.now || Date.now;
-const homes=createHomeLobbies({character:id=>economy.view(id),now,maxMembers:options.homeCapacity??6,maxRooms:options.homeRoomLimit??100,idleMs:options.homeIdleMs??600000});
+const presence=new Map();
+const homes=createHomeLobbies({character:id=>economy.view(id),now,maxMembers:options.homeCapacity??6,maxRooms:options.homeRoomLimit??100,idleMs:options.homeIdleMs??600000,onChange:reconcilePresence});
+function reconcilePresence(id){
+  const home=homes.peek(id);
+  if(!home){presence.get(id)?.reconcile();presence.delete(id);return;}
+  if(!['bridge','rental'].includes(home.environment))return;
+  if(!presence.has(id))presence.set(id,createHomePresence({lobbyId:id,getLobby:()=>{const room=homes.peek(id);return room?{...room,code:room.id}:null;},now:options.presenceNow||(()=>performance.now())}));
+  presence.get(id).reconcile();
+}
 const graceMs = options.graceMs ?? 120000;
 const creationLimit = options.creationLimit ?? 30;
 const roomLimit = options.roomLimit ?? 100;
@@ -106,7 +115,8 @@ async function body(req) {
         }
         // Deliberately ignore forwarded IP headers: a proxy IP limit protects resources,
         // while session limits below handle players sharing the same proxy.
-        if (!allowRequest(`global:${req.socket.remoteAddress}`, 600)) { res.setHeader('Retry-After', '60'); return reply(res, 429, { error: 'Too many requests. Try again shortly.' }); }
+        const movement=url.pathname.startsWith('/api/home/presence/');
+        if (!allowRequest(`${movement?'movement':'global'}:${req.socket.remoteAddress}`, movement?2400:600)) { res.setHeader('Retry-After', '60'); return reply(res, 429, { error: 'Too many requests. Try again shortly.' }); }
       }
       if (req.method === 'GET' && publicFiles.has(url.pathname)) {
         const [file, type] = publicFiles.get(url.pathname);
@@ -117,12 +127,20 @@ async function body(req) {
       const characterId=economy.authenticate(characterToken);
       if(req.method==='POST' && url.pathname.startsWith('/api/home/') && url.pathname!=='/api/home/poker') {
         if(!characterId)return reply(res,401,{error:'Create or restore your character first.'});
-        if(!allowRequest(`character:${characterId}`,120)){res.setHeader('Retry-After','60');return reply(res,429,{error:'Too many requests. Wait a minute.'});}
+        const movement=url.pathname.startsWith('/api/home/presence/');
+        if(!allowRequest(`${movement?'movement-character':'character'}:${characterId}`,movement?360:120)){res.setHeader('Retry-After','60');return reply(res,429,{error:'Too many requests. Wait a minute.'});}
         if(['/api/home/create','/api/home/join'].includes(url.pathname)&&!allowRequest(`home-join:${req.socket.remoteAddress}`,creationLimit)){
           res.setHeader('Retry-After','60');return reply(res,429,{error:'Too many home lobby attempts. Wait a minute.'});
         }
         const data=await body(req);
         if(economy.authenticate(characterToken)!==characterId)return reply(res,401,{error:'Create or restore your character first.'});
+        if(['/api/home/presence/view','/api/home/presence/move'].includes(url.pathname)){
+          const home=homes.view(characterId);if(!home)return reply(res,200,{home:null,presence:null});
+          reconcilePresence(home.id);const model=presence.get(home.id);
+          if(!model)return reply(res,200,{home,presence:null});
+          if(url.pathname.endsWith('/move')&&economy.view(characterId).inTable)return reply(res,409,{error:'Return home before moving.'});
+          return reply(res,200,{home,presence:url.pathname.endsWith('/move')?model.move(characterId,data):model.view(characterId)});
+        }
         if(url.pathname==='/api/home/create')return reply(res,200,{home:homes.create(characterId)});
         if(url.pathname==='/api/home/join')return reply(res,200,{home:homes.join(characterId,data.code)});
         if(url.pathname==='/api/home/view')return reply(res,200,{home:homes.view(characterId)});

@@ -24,6 +24,8 @@ const FORM_FOCUS = 'input,textarea,select,form button,[contenteditable]:not([con
 const MOVE_HINT = 'WASD / Arrow keys · Move';
 const isLayered = value => Object.hasOwn(HOME_ASSETS, value);
 export function createHomeWorld({ home, avatar, frame, layers, hint }) {
+  let networkOrigin=null;
+  const remotes=new Map();
   let position = initialPosition(), environment = '', identity = null, active = false, last = 0, raf = 0;
   let scale = 1, camera = null, anchor = null, viewport = 1920, offsetY = 0, previousWidth = 0, previousHeight = 0;
   let focused = document.hasFocus?.() !== false, heldInteract = false;
@@ -52,6 +54,10 @@ export function createHomeWorld({ home, avatar, frame, layers, hint }) {
     }
     avatar.style.left = `${(position.x - camera) * scale}px`; avatar.style.top = `${position.y * scale + offsetY}px`;
     frame.dataset.x = String(position.x); frame.dataset.y = String(position.y); frame.dataset.camera = String(camera);
+    for(const remote of remotes.values()){
+      remote.node.style.left=`${(remote.pose.x-camera)*scale}px`;remote.node.style.top=`${remote.pose.y*scale+offsetY}px`;
+      remote.node.style.setProperty('--world-avatar-height',avatar.style.getPropertyValue('--world-avatar-height'));
+    }
     updateHint();
   }
   function resize() {
@@ -73,6 +79,7 @@ export function createHomeWorld({ home, avatar, frame, layers, hint }) {
     dx = Math.sign(dx); dy = Math.sign(dy);
     const previous = position;
     if (dx || dy) { position = movePosition(position, dx, dy, dt, environment); if (dx) avatar.dataset.facing = dx < 0 ? 'left' : 'right'; }
+    if(networkOrigin){const distance=Math.hypot(position.x-networkOrigin.x,position.y-networkOrigin.y);if(distance>85)position=moveFootpoint(networkOrigin,(position.x-networkOrigin.x)*85/distance,(position.y-networkOrigin.y)*85/distance,environment);}
     avatar.classList.toggle('walking', position.x !== previous.x || position.y !== previous.y);
     draw(); raf = requestAnimationFrame(tick);
   }
@@ -100,6 +107,22 @@ export function createHomeWorld({ home, avatar, frame, layers, hint }) {
   document.addEventListener('visibilitychange', () => { clear(); updateHint(); });
   new ResizeObserver(resize).observe(home);
   return {
+    pose(){return {...position,facing:avatar.dataset.facing||'right'};},
+    clearPresence(){networkOrigin=null;for(const remote of remotes.values())remote.node.remove();remotes.clear();},
+    syncPresence(snapshot,roster){
+      const own=snapshot.players.find(p=>p.id===identity);if(own){position=safePosition(own,environment);networkOrigin={...position};avatar.dataset.facing=own.facing;}
+      const ids=new Set(snapshot.players.filter(p=>p.id!==identity).map(p=>p.id));
+      for(const [id,remote] of remotes)if(!ids.has(id)){remote.node.remove();remotes.delete(id);}
+      for(const pose of snapshot.players){
+        if(pose.id===identity)continue;const member=roster.find(p=>p.id===pose.id);if(!member)continue;
+        let remote=remotes.get(pose.id);
+        if(!remote){const node=avatar.cloneNode(true);node.classList.add('remote-character');node.dataset.characterId=pose.id;node.querySelector('svg').removeAttribute('id');node.querySelector('span').removeAttribute('id');frame.append(node);remote={node};remotes.set(pose.id,remote);}
+        remote.pose=pose;remote.node.querySelector('span').textContent=member.name;
+        remote.node.querySelector('use').setAttribute('href',`/assets/characters.svg#${['hoodie','cap','beanie','coat'].includes(member.appearance.outfit)?member.appearance.outfit:'hoodie'}`);
+        remote.node.querySelector('svg').style.color=({blue:'#5c7e96',amber:'#b59778',plum:'#987d96',sage:'#829c91'})[member.appearance.color]||'#5c7e96';
+      }
+      draw();
+    },
     setEnvironment(value, id) {
       const changed = value !== environment || id !== identity; environment = value; identity = id;
       const layered = isLayered(value); home.classList.toggle('layered-world', layered); frame.classList.toggle('hidden', !layered);

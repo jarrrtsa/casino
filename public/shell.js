@@ -10,6 +10,7 @@ export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer
   const preferences = stored(SETTINGS_KEY) || {};
   let lobbyOpen = false;
   let social=null;
+  let presenceState=null,presenceBusy=false,presenceEpoch=0;
   const world=createHomeWorld({home:$('home'),avatar:document.querySelector('.home-character'),frame:$('home-world'),layers:$('world-layers'),hint:$('world-controls')});
 
   function updateProfile() {
@@ -119,6 +120,7 @@ export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer
   });
   const character=createCharacterManager({onChange:c=>{profile=c;updateProfile();},onError,onSingleplayer,onIdentityChange:()=>{social?.reset();onIdentityChange?.();},hasTable:()=>Boolean(getRoom())});
   function renderHome(home){
+    if(!home||presenceState?.homeId!==home.id){presenceEpoch++;presenceState=null;world.clearPresence();}
     $('home-empty').classList.toggle('hidden',Boolean(home));$('home-membership').classList.toggle('hidden',!home);
     $('home-social-open').querySelector('small').textContent=home?`${home.players.length} / ${home.capacity} friends · ${home.code}`:'Free visits with friends';
     $('home-roster').replaceChildren();$('home-host-target').replaceChildren();
@@ -165,6 +167,22 @@ export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer
   $('home-social-dialog').addEventListener('close',()=>{$('home-invite-url').value='';$('home-copy-status').textContent='';$('home-invite-result').classList.add('hidden');});
   setInterval(()=>{if(!document.hidden&&profile&&(social.home||document.body.dataset.screen==='home'))void refreshHome();},15000);
   void character.ready.then(refreshHome);
+  async function syncPresence(){
+    if(presenceBusy||!social.home||!profile||document.hidden||document.body.dataset.screen!=='home'||!HOME_ASSETS[social.home.environment])return;
+    presenceBusy=true;const epoch=presenceEpoch,homeId=social.home.id;
+    try{
+      const pose=world.pose(),own=presenceState?.own;
+      const moving=own&&(pose.x!==own.x||pose.y!==own.y||pose.facing!==own.facing);
+      let result;
+      try{result=await character.homeRequest(moving?'/api/home/presence/move':'/api/home/presence/view',moving?{...pose,seq:own.seq+1,generation:own.generation}:{});}
+      catch(error){if(error.status!==400)throw error;result=await character.homeRequest('/api/home/presence/view');}
+      if(epoch!==presenceEpoch||social.home?.id!==homeId)return;
+      if(!result.home){social.reset();return;}
+      if(result.presence){presenceState={homeId,own:result.presence.players.find(p=>p.id===profile.id)};world.syncPresence(result.presence,result.home.players);}
+    }catch(error){if(!error.stale)$('home-social-status').textContent=error.message;}
+    finally{presenceBusy=false;}
+  }
+  setInterval(()=>void syncPresence(),200);
   updateProfile(); applyGraphics(); setLobby(false); showScreen('home');
   // AudioContext is resumed through the first real user gesture, never on page load.
   document.addEventListener('pointerdown', () => { if (preferences.sound) void onSound(true); }, { once: true });
