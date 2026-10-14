@@ -9,7 +9,7 @@ let clockOffset = 0;
 let raiseKey = '';
 let soundOn = false;
 let audioContext;
-const ui = createShell({ getRoom: () => currentRoom, onLeave: () => $('leave').click(), onSound: enabled => setSound(enabled), onError: text => setError(text), onSingleplayer: buyIn => join('/api/singleplayer',buyIn) });
+const ui = createShell({ getRoom: () => currentRoom, onLeave: () => $('leave').click(), onSound: enabled => setSound(enabled), onError: text => setError(text), onSingleplayer: buyIn => join('/api/singleplayer',buyIn), onIdentityChange: () => resetSession() });
 const money = value => `$${value.toLocaleString('en-US')}`;
 const stageNames = { preflop: 'Preflop', flop: 'Flop', turn: 'Turn', river: 'River', finished: 'Hand finished' };
 const cardKey = c => `${c.rank}${c.suit}`;
@@ -83,12 +83,15 @@ function renderSeats(room) {
   }
 }
 async function request(path, data = {}) {
-  const response = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(ui.character.token ? {'X-Character-Token':ui.character.token}:{}), ...(session ? { Authorization: `Bearer ${session.token}` } : {}) }, body: JSON.stringify(data) });
-  const result = await response.json();
-  if (!response.ok) { const error = new Error(result.error); error.status = response.status; throw error; }
+  const stamp = ui.character.stamp(), sessionToken = session?.token;
+  const result = await ui.character.gameRequest(path, data, sessionToken);
+  ui.character.assertCurrent(stamp);
+  if (sessionToken !== session?.token) throw Object.assign(new Error('Outdated table response.'), { stale: true });
   return result;
 }
 function render(room) {
+  if (!session || !room || !ui.character.isResponseCurrent(room)) return;
+  if (room.character && ui.character.profile && room.character.id !== ui.character.profile.id) { resetSession('This table belongs to another character.'); return; }
   if (currentRoom?.code === room.code && currentRoom?.hand && room.hand && (currentRoom.hand.number > room.hand.number || (currentRoom.hand.number === room.hand.number && currentRoom.hand.version > room.hand.version))) return;
   const previous = currentRoom; if (room.serverTime) clockOffset = room.serverTime - Date.now();
   currentRoom = room;
@@ -187,7 +190,10 @@ function updateRaiseCost() {
 }
 setInterval(updateClock, 1000);
 function resetSession(message = '') {
-  events?.abort(); sessionStorage.removeItem('casino-session'); session = null; currentRoom = null; connected = false;
+  events?.abort(); events = null;
+  try { sessionStorage.removeItem('casino-session'); } catch { /* In-memory state is still cleared. */ }
+  session = null; currentRoom = null; connected = false; busy = false;
+  $('hole').replaceChildren(); $('seats').replaceChildren(); $('results').replaceChildren(); $('results').dataset.key = '';
   ui.returnHome(); raiseKey = '';
   setError(message);
 }
@@ -201,27 +207,29 @@ function retryDelay(ms, signal) {
 async function connect() {
   events?.abort();
   const controller = new AbortController(); events = controller;
-  const token = session.token; let retries = 0;
-  while (!controller.signal.aborted && session?.token === token) {
+  const token = session.token, stamp = ui.character.stamp(); let retries = 0;
+  const alive = () => !controller.signal.aborted && session?.token === token && ui.character.isCurrent(stamp);
+  while (alive()) {
     try {
       const response = await fetch('/api/events', { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal });
-      if (response.status === 401) { resetSession('Lobby closed or server restarted. Create or join a lobby.'); return; }
+      if (!alive()) return;
+      if (response.status === 401) { resetSession('Lobby closed or access changed.'); await ui.character.refresh(); return; }
       if (!response.ok) throw new Error('Connection failed.');
       connected = true; retries = 0; $('connection').textContent = '● Connected'; $('connection').classList.remove('offline');
       const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = '';
       try {
-        while (!controller.signal.aborted) {
-          const { value, done } = await reader.read(); if (done) break;
+        while (alive()) {
+          const { value, done } = await reader.read(); if (done || !alive()) break;
           buffer += decoder.decode(value, { stream: true });
           let end;
           while ((end = buffer.indexOf('\n\n')) >= 0) {
             const message = buffer.slice(0, end); buffer = buffer.slice(end + 2);
-            if (message.startsWith('data: ')) render(JSON.parse(message.slice(6)));
+            if (alive() && message.startsWith('data: ')) render(JSON.parse(message.slice(6)));
           }
         }
       } finally { await reader.cancel().catch(() => {}); }
-    } catch { if (controller.signal.aborted) return; }
-    if (controller.signal.aborted || session?.token !== token) return;
+    } catch { if (!alive()) return; }
+    if (!alive()) return;
     connected = false; $('connection').textContent = 'Disconnected — reconnecting…'; $('connection').classList.add('offline'); if (currentRoom) render(currentRoom);
     await retryDelay(Math.min(1000 * 2 ** retries++, 10000), controller.signal);
   }
@@ -229,9 +237,15 @@ async function connect() {
 async function join(path, buyIn=Number($('mp-buyin').value)) {
   setError();
   session = await request(path, { name: $('name').value, code: $('code').value, buyIn });
-  sessionStorage.setItem('casino-session', JSON.stringify(session)); render(session.room); connect();
+  try { sessionStorage.setItem('casino-session', JSON.stringify(session)); } catch { /* The current connection remains usable. */ } render(session.room); connect();
 }
-function action(fn) { return async event => { event?.preventDefault(); if (busy) return; busy = true; setError(); if (session && currentRoom) render(currentRoom); try { await fn(); } catch (error) { if (error.status === 401) resetSession('Session ended. Rejoin the lobby.'); else setError(error.message || 'Connection failed. Please retry.'); } finally { busy = false; if (session && currentRoom) render(currentRoom); } }; }
+function action(fn) { return async event => {
+  event?.preventDefault(); if (busy) return; const stamp = ui.character.stamp(); busy = true; setError();
+  if (session && currentRoom) render(currentRoom);
+  try { await fn(); }
+  catch (error) { if (error.stale) return; if (error.status === 401) { resetSession('Session ended or access changed.'); await ui.character.refresh(); } else setError(error.message || 'Connection failed. Please retry.'); }
+  finally { if (ui.character.isCurrent(stamp)) { busy = false; if (session && currentRoom) render(currentRoom); } }
+}; }
 $('create-form').onsubmit = action(() => join('/api/create'));
 $('join-form').onsubmit = action(() => join('/api/join'));
 $('ready').onclick = action(async () => render(await request('/api/ready')));
@@ -266,5 +280,11 @@ const inviteCode = new URL(location.href).searchParams.get('room');
 const hasInvite = inviteCode && /^[A-F0-9]{6}$/i.test(inviteCode);
 if (hasInvite) $('code').value = inviteCode.toUpperCase();
 await ui.character.ready;
-try { const stored = sessionStorage.getItem('casino-session'); if (stored || ui.character.profile?.session) { session = stored ? JSON.parse(stored) : ui.character.profile.session;sessionStorage.setItem('casino-session',JSON.stringify(session)); render(await request('/api/session')); connect(); } } catch { resetSession(); }
+try {
+  if (ui.character.token) {
+    let stored; try { stored = JSON.parse(sessionStorage.getItem('casino-session')); } catch { /* A valid server session can still be restored. */ }
+    const restored = ui.character.profile?.session || stored;
+    if (restored) { session = restored; render(await request('/api/session')); if (session) connect(); }
+  }
+} catch (error) { if (!error.stale) resetSession(); }
 if (hasInvite && !session) ui.ensureProfile('entry');

@@ -3,7 +3,7 @@ const SETTINGS_KEY = 'casino-settings-v1';
 function stored(key) { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } }
 function remember(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* The current session remains usable when storage is unavailable. */ } }
 
-export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer }) {
+export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer, onIdentityChange }) {
   let profile = null;
   const preferences = stored(SETTINGS_KEY) || {};
   let lobbyOpen = false;
@@ -95,7 +95,7 @@ export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer
     if (getRoom() && lobbyOpen) { setLobby(false); event.preventDefault(); }
     else if (getRoom()) { openMenu(); event.preventDefault(); }
   });
-  const character=createCharacterManager({onChange:c=>{profile=c;updateProfile();},onError,onSingleplayer});
+  const character=createCharacterManager({onChange:c=>{profile=c;updateProfile();},onError,onSingleplayer,onIdentityChange,hasTable:()=>Boolean(getRoom())});
   updateProfile(); applyGraphics(); setLobby(false); showScreen('home');
   // AudioContext is resumed through the first real user gesture, never on page load.
   document.addEventListener('pointerdown', () => { if (preferences.sound) void onSound(true); }, { once: true });
