@@ -7,6 +7,7 @@ import { startHand, act, viewHand, legalActions } from './poker.mjs';
 import { createEconomy } from './economy.mjs';
 import { botAction } from './bots.mjs';
 import { createNpcSeats, npcProfile, npcPublicProfile } from './npc-roster.mjs';
+import { createHomeLobbies } from './home-lobby.mjs';
 
 const publicFiles = new Map([['/', ['index.html', 'text/html']], ['/app.js', ['app.js', 'text/javascript']], ['/shell.js', ['shell.js', 'text/javascript']], ['/style.css', ['style.css', 'text/css']], ['/shell.css', ['shell.css', 'text/css']], ['/assets/dealer.svg', ['assets/dealer.svg', 'image/svg+xml']], ['/assets/home.svg', ['assets/home.svg', 'image/svg+xml']], ['/assets/cellar.svg', ['assets/cellar.svg', 'image/svg+xml']], ['/assets/avatars.svg', ['assets/avatars.svg', 'image/svg+xml']]]);
 for(const name of ['bridge','loft','mansion','characters','table-bridge','table-home','table-loft','table-mansion'])publicFiles.set(`/assets/${name}.svg`,[`assets/${name}.svg`,'image/svg+xml']);
@@ -23,6 +24,7 @@ const sessions = new Map();
 const streams = new Map();
 const requests = new Map();
 const now = options.now || Date.now;
+const homes=createHomeLobbies({character:id=>economy.view(id),now,maxMembers:options.homeCapacity??6,maxRooms:options.homeRoomLimit??100,idleMs:options.homeIdleMs??600000});
 const graceMs = options.graceMs ?? 120000;
 const creationLimit = options.creationLimit ?? 30;
 const roomLimit = options.roomLimit ?? 100;
@@ -38,6 +40,7 @@ function removeSession(token, session) {
   if (!room.players.length || room.singleplayer) { clearTimeout(room.timer); rooms.delete(room.code); } else broadcast(room);
 }
 function cleanup() {
+  homes.cleanup();
   for (const [token, session] of sessions) {
     if (streams.get(session.player.id)?.size || now() - session.player.disconnectedAt < graceMs) continue;
     // Finish the current hand before removing a seat with committed chips.
@@ -107,8 +110,23 @@ async function body(req) {
         res.writeHead(200, { 'Content-Type': `${type}; charset=utf-8` });
         res.end(await readFile(new URL(`./public/${file}`, import.meta.url))); return;
       }
-      const characterToken=req.headers['x-character-token'] || (url.pathname.startsWith('/api/character') || url.pathname.startsWith('/api/wallet') || url.pathname.startsWith('/api/job') ? req.headers.authorization?.replace(/^Bearer /,'') : null);
+      const characterToken=req.headers['x-character-token'] || (url.pathname.startsWith('/api/character') || url.pathname.startsWith('/api/wallet') || url.pathname.startsWith('/api/job') || url.pathname.startsWith('/api/home/') ? req.headers.authorization?.replace(/^Bearer /,'') : null);
       const characterId=economy.authenticate(characterToken);
+      if(req.method==='POST' && url.pathname.startsWith('/api/home/')) {
+        if(!characterId)return reply(res,401,{error:'Create or restore your character first.'});
+        if(!allowRequest(`character:${characterId}`,120)){res.setHeader('Retry-After','60');return reply(res,429,{error:'Too many requests. Wait a minute.'});}
+        if(['/api/home/create','/api/home/join'].includes(url.pathname)&&!allowRequest(`home-join:${req.socket.remoteAddress}`,creationLimit)){
+          res.setHeader('Retry-After','60');return reply(res,429,{error:'Too many home lobby attempts. Wait a minute.'});
+        }
+        const data=await body(req);
+        if(economy.authenticate(characterToken)!==characterId)return reply(res,401,{error:'Create or restore your character first.'});
+        if(url.pathname==='/api/home/create')return reply(res,200,{home:homes.create(characterId)});
+        if(url.pathname==='/api/home/join')return reply(res,200,{home:homes.join(characterId,data.code)});
+        if(url.pathname==='/api/home/view')return reply(res,200,{home:homes.view(characterId)});
+        if(url.pathname==='/api/home/leave')return reply(res,200,homes.leave(characterId));
+        if(url.pathname==='/api/home/transfer')return reply(res,200,{home:homes.transfer(characterId,data.characterId)});
+        return reply(res,404,{error:'Home action not found.'});
+      }
       if(req.method==='POST' && url.pathname==='/api/character/recover') {
         if(!allowRequest(`recovery:${req.socket.remoteAddress}`,options.recoveryLimit ?? 10)) {
           res.setHeader('Retry-After','60');return reply(res,429,{error:'Too many recovery attempts. Wait a minute.'});
@@ -117,6 +135,7 @@ async function body(req) {
         const restored=economy.recover(data.recoveryKey);
         if(!restored)return reply(res,401,{error:'Invalid recovery key.'});
         jobs.delete(restored.character.id);
+        homes.remove(restored.character.id);
         // Recovery only succeeds without a table lease; invalidate any residual sessions.
         for(const [key,s] of sessions)if(s.player.characterId===restored.character.id)removeSession(key,s);
         return reply(res,200,restored);
@@ -136,7 +155,7 @@ async function body(req) {
           const active=[...sessions.entries()].find(([,s])=>s.player.characterId===characterId);
           return reply(res,200,{...economy.view(characterId),session:active?{token:active[0],playerId:active[1].player.id,room:snapshot(active[1].room,active[1].player.id)}:null});
         }
-        if(url.pathname==='/api/character/delete'){economy.remove(characterId,data.name);jobs.delete(characterId);return reply(res,200,{ok:true});}
+        if(url.pathname==='/api/character/delete'){economy.remove(characterId,data.name);jobs.delete(characterId);homes.remove(characterId);return reply(res,200,{ok:true});}
         if(url.pathname==='/api/job/start') {
           const c=economy.view(characterId);if(c.inTable)throw new Error('Return home before starting a delivery.');
           if(now()-c.lastJob<15000)throw new Error('Next delivery is available in a few seconds.');
