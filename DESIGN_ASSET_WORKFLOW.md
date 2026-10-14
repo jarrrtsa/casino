@@ -47,3 +47,28 @@ Audioinventaario voi sisältää myöhemmin sade-, tuli-, huone-, meri- ja kasin
 Jokaisella manifestin assetilla on vähintään id, kuvaus, tyyppi, tiedostopolku, formaatti, koko tai kesto, kerros/ankkuri tarvittaessa, tila (planned/draft/review/approved), versio, hyväksyntämerkintä ja riippuvuudet. Hyväksyntämerkintä perustuu käyttäjän viestiin. Kirjaa generoinnin/piirtämisen lähde ja mahdolliset käytetyt referenssit; käytä omia, käyttäjän antamia tai käyttöön oikeutettuja aineistoja.
 
 Ennen luovutusta varmista, että jokainen sovitun paketin assetti on hyväksytty, tiedostot aukeavat ja esikatselut vastaavat lopullisia tiedostoja. Toimita inventaario, esikatselut, lähteet, hyväksytyt lopputiedostot ja integraatiomuistio. Puuttuvat assetit tai pelkät briefit estävät paketin merkitsemisen kokonaan valmiiksi. Peli pysyy koko valmistelun ajan ennallaan designin osalta.
+
+## Tarkennus 14.10.2026: ensimmäinen paketti on asumistaso 0
+
+Käyttäjä ja Chat C valmistavat parhaillaan sillan alusympäristöä. Ensimmäinen sovittu valmistelukokonaisuus on tämä ympäristö kerroksineen sekä saman paikan pokerinäkymä. Muita asumistasoja ei tarvitse aloittaa ennen tätä kokonaisuutta. Yksi assetti kerrallaan hyväksytään edelleen käyttäjän kanssa. Tämä ohje ei ota assetteja peliin eikä toteuta liikkumista.
+
+### Maailman koko ja liikkuminen
+
+- Ympäristö on suunniteltu kahden ruudun levyiseksi. Tarkka pikselikoko ja tavoitenäytön kuvasuhde sovitaan assettityössä; ruutu tarkoittaa pelin näkyvää aluetta, ei oletettua selaimen fyysistä leveyttä kaikilla laitteilla.
+- A/D-liike siirtää hahmoa sivusuunnassa ja vierittää näkymää. Kerrokset liikkuvat eri nopeuksilla ja tuottavat parallax-vaikutelman.
+- W/S-liike on rajattua liikkumista syvyyssuunnassa saman näkyvän alueen sisällä. Se ei aiheuta pystysuuntaista vieritystä eikä syvyysliikkeeseen sidottua parallaxia. Kameran pystyasema pysyy samana.
+- Hahmon syvyysliikkeen sallittu alue merkitään suunnitteluun erikseen. Älä oleta koko kuvan olevan kuljettavaa lattiaa. Mahdollinen koon muuttuminen syvyyden mukaan ja täsmälliset liikerajat ovat vielä sovittavia asioita.
+
+### Kerrosten luovutus myöhempää toteutusta varten
+
+Kirjaa kerroksille yhteinen maailman koordinaatisto, näkymän koko/kuvasuhde, järjestys, kohdistuspisteet ja ehdotettu vain vaakasuuntainen parallax-kerroin. Tarkista yhdistelmän molemmat reunat ja keskikohta erillisessä esikatselussa. Kerrosten on peitettävä niille suunniteltu kameran liike ilman tyhjiä reunoja; eri syvyyskerrosten tiedostoleveyksien ei tarvitse olla identtisiä, jos kohdistus ja peitto on dokumentoitu.
+
+Kirjaa hahmon spawn, rajattu kuljettava syvyyskaista, esteet ja pokeripöydän vuorovaikutusalue suhteessa yhteiseen koordinaatistoon. Näitä voi kuvata erillisessä suunnittelukuvassa tai metadatassa; niitä ei polteta näkyviin lopullisiin taustoihin. Tämä on valmistelumetadataa, ei pelin collision- tai WASD-toteutus.
+
+### Sama sijainti pokerissa
+
+Valmistetaan erillinen pokerinäkymä saman sillan aluspaikan pokeripöydästä. Paikan tunnistettavat rakenteet, pöytä, materiaalit, valaistus ja ympäristön yksityiskohdat pysyvät yhtenäisinä kotinäkymän kanssa. Pokerinäkymän rajaus/perspektiivi sovitaan erikseen; se voi käyttää samoja lähdeassetteja, mutta pelkkää kotikuvan automaattista cropia ei oleteta lopulliseksi ratkaisuksi.
+
+Sama asumistason 0 pokerinäkymä palvelee NPC-yksinpeliä sekä kyseisessä ympäristössä hostattua yksityistä multiplayer-pöytää. Pelikortit, panokset, pelimerkkimäärät, nimet ja käyttöliittymä ovat myöhemmin erillisiä pelielementtejä; niitä ei piirretä pysyväksi osaksi taustaa. Merkitse pöydän, istumapaikkojen ja mahdollisen jakajan kohdistus niin, että pelielementit voidaan myöhemmin sijoittaa siihen.
+
+Valmistumisjärjestys: sillan alusmaailma ja sen hyväksytyt layerit → saman sijainnin hyväksytty pokerinäkymä ja tarvittavat erilliset osat → koko sovitun paketin tarkistus → vasta käyttäjän erikseen käynnistämä pelintegraatio. Asumistaso 0 on designin nimi; tämä työ ei muuta nykyisen backendin XP-leveliä, alkukotia tai progression rajoja.

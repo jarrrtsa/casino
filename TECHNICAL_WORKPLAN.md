@@ -117,3 +117,12 @@ Tämän vaiheen jälkeen mahdollisia teknisiä kokonaisuuksia ovat pysyvän tall
 
 
 14.10.2026 / Chat A / vaihe 2: NPC-integraation commit 463031c. Oman osuuden toteutus ja testit valmiit; seuraavaksi odotetaan Chat B:n palautuskäyttöliittymän valmistumista teknistä integraatiota varten.
+
+## Vaiheen 2 integraatio ja design-tarkennus 14.10.2026
+
+Chat B valmistui: c4775c5 (toteutus ja testit), d2557d4 (raportti). Chat A katselmoi identity-rajan, vahvistuksen, avaimen käsittelyn, vanhat vastaukset/yhteydet sekä raportin. Sovitut tiedostorajat toteutuivat; uutta static-routea ei tarvittu. Chat B:n oma versio läpäisi 50 testiä; yhdistetty versio sisältää lisäksi Chat A:n kaksi NPC-integraatiotestiä ja läpäisee 52/52. Raportissa mainittu aiempi hosting-testiprosessin epäonnistuminen ei toistunut tässä yhteisessä testiajossa. Chat A:n ja Chat B:n tekninen vaihe 2 on nyt yhdistetty paikalliseen codex/npc-integration-haaraan. Ei pushia tai deployta.
+
+Chat C:n työ jatkuu erillisessä assetti-worktreessä. Käyttäjän tämänhetkinen paketti on asumistason 0 sillan alusympäristö, sen layerit ja saman sijainnin pokerinäkymä. Maailma on kahden ruudun levyinen: A/D vierittää vaakasuunnassa ja käyttää parallaxia; W/S sallii rajatun syvyysliikkeen ilman pystysuuntaista vieritystä tai parallaxia. Pokerinäkymää käytetään myöhemmin sekä NPC-pelissä että tällä asumistasolla hostatussa multiplayer-lobbyssa. Tarkennettu luovutusohje on kanonisen DESIGN_ASSET_WORKFLOW.md:n viimeisessä osiossa.
+
+Assetteja ei siirretä public/-kansioon, oteta peliin eikä design-haaraa yhdistetä nyt. Liikkumista, kameraa tai collisionia ei toteuteta tämän integraation yhteydessä. Käyttäjä ja Chat C viimeistelevät ensin sillan alusmaailman kerroksineen ja sen pokerinäkymän, yksi hyväksyttävä assetti kerrallaan.
+14.10.2026 / Chat A: Palautuskäyttöliittymän ja NPC-integraation yhdistävä commit on adc4fe8. Molemmat tekniset osuudet ovat valmiit; Chat C:n erillinen assettityö jatkuu.

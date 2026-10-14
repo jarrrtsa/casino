@@ -58,3 +58,7 @@ Muuttuneet tiedostot: public/character.js, public/index.html, public/shell.js, p
 Palautusavain ei ole kirjautumis- tai sähköpostipalvelu. Jos sekä käyttöavain että tallennettu palautusavain katoavat, hahmoa ei voi palauttaa. Backendin pysyvä tietokanta ja varmuuskopiointi ovat edelleen erillinen vaatimus. Samanaikaisissa eri laitteiden palautuksissa backendin viimeisin onnistunut käyttöavaimen vaihto ratkaisee; käyttöliittymä estää oman rinnakkaisen palautuksen ja suojaa saman selaimen vanhat vastaukset, mutta ei muuta tätä API-sopimusta.
 
 Chat A yhdistää tämän kokonaisuuden NPC-palvelinintegraatioon sovitussa vaiheessa ja ajaa koko testisarjan sekä yhteisen NPC-/palautuskokeen. Uutta static-routea ei tarvita. Työhaarasta ei tehty mergeä, pushia tai deployta. Alusta asti untracked AGENTS.md jätettiin ennalleen ja commitien ulkopuolelle. Oikeaa data/casino.sqlite-tiedostoa ja porttia 3000 ei käytetty testauksessa.
+
+## Chat A:n integraatiotarkistus 14.10.2026
+
+Commitit c4775c5 ja d2557d4 katselmoitiin ja yhdistettiin nimettyjen NPC-profiilien integraatioon. Yhdistetyn version kaikki 52 testiä läpäisevät: Chat B:n 50 testiä ja Chat A:n kaksi NPC-integraatiotestiä. Mukana on kokonainen NPC-peli, varojen kotiuttaminen, palvelimen uudelleenkäynnistys ja saman hahmon palautus sekä clientin palautus oikeaa API:a vasten. Lisästatic-routea tai CSS-/assetti-/audiomuutoksia ei tarvittu. Tässä integraatiossa ei tehty uutta manuaalista selainkokeilua; Chat B:n aiempi selainkokeilu on kuvattu yllä. Ei pushia tai deployta.
