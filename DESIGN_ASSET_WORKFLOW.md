@@ -72,3 +72,7 @@ Valmistetaan erillinen pokerinäkymä saman sillan aluspaikan pokeripöydästä.
 Sama asumistason 0 pokerinäkymä palvelee NPC-yksinpeliä sekä kyseisessä ympäristössä hostattua yksityistä multiplayer-pöytää. Pelikortit, panokset, pelimerkkimäärät, nimet ja käyttöliittymä ovat myöhemmin erillisiä pelielementtejä; niitä ei piirretä pysyväksi osaksi taustaa. Merkitse pöydän, istumapaikkojen ja mahdollisen jakajan kohdistus niin, että pelielementit voidaan myöhemmin sijoittaa siihen.
 
 Valmistumisjärjestys: sillan alusmaailma ja sen hyväksytyt layerit → saman sijainnin hyväksytty pokerinäkymä ja tarvittavat erilliset osat → koko sovitun paketin tarkistus → vasta käyttäjän erikseen käynnistämä pelintegraatio. Asumistaso 0 on designin nimi; tämä työ ei muuta nykyisen backendin XP-leveliä, alkukotia tai progression rajoja.
+
+## Käyttäjän uusi integraatiolupa 14.10.2026
+
+Lvl 0:n neljä layeria (far, close, focus, foreground) ja pokerinäkymä ovat käyttäjän hyväksymiä kokeiltavaksi pelissä. Chat A saa integroida tämän paketin ja tehdä WASD:n, vaakavierityksen ja parallaxin. Liikealueen jalkapiste: koko maailman x 10–90 %, kuvan y 60–90 %. Tämä korvaa vanhan integraatiokiellon vain lvl 0:n osalta. Chat C jatkaa lvl 1:n valmistelua ja myöhemmin uusia hahmoja edelleen irrallisina assetteina; niitä ei oteta peliin ilman seuraavaa käyttäjän lupaa. Lvl 0:n toteutus ja testit kuvataan docs/LEVEL0_WORLD.md:ssä.

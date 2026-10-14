@@ -126,3 +126,8 @@ Chat C:n työ jatkuu erillisessä assetti-worktreessä. Käyttäjän tämänhetk
 
 Assetteja ei siirretä public/-kansioon, oteta peliin eikä design-haaraa yhdistetä nyt. Liikkumista, kameraa tai collisionia ei toteuteta tämän integraation yhteydessä. Käyttäjä ja Chat C viimeistelevät ensin sillan alusmaailman kerroksineen ja sen pokerinäkymän, yksi hyväksyttävä assetti kerrallaan.
 14.10.2026 / Chat A: Palautuskäyttöliittymän ja NPC-integraation yhdistävä commit on adc4fe8. Molemmat tekniset osuudet ovat valmiit; Chat C:n erillinen assettityö jatkuu.
+
+## Vaihe 3: käyttäjän hyväksymä lvl 0 -koeintegraatio
+
+Käyttäjä hyväksyi 14.10.2026 neljän sillan aluslayerin ja saman paikan pokerinäkymän kokeilun peliin sekä WASD-liikkumisen ja vaakaparallaxin. Tämä korvaa aiemman integraatiokiellon vain lvl 0:n osalta. Chat A omistaa tämän integraation public/shell.js-, public/index.html-, uuden home-world-moduulin ja CSS:n sekä niiden static-reittien ja testien osalta. Chat C jatkaa lvl 1:n ja myöhemmin hahmojen valmistelua erillisessä worktreessä; sen staging-tiedostoja ei muuteta. Kävelyn jalkapisteen rajat: x 10–90 % koko maailmakuvasta, y 60–90 %. W/S ei liikuta kameraa. Nykyiset hahmot ja talouden progression rajat säilyvät.
+14.10.2026 / Chat A / vaihe 3: Lvl 0 -kokeilu toteutettu. Neljä layeria ja pokerikuva otettu käyttöön, WASD sekä nuolinäppäimet, kameran vaakavieritys ja vain vaakasuuntainen parallax lisätty. Liikerajat ovat kuvan x 10–90 %, y 60–90 %. Nykyiset hahmot säilyvät. docs/LEVEL0_WORLD.md sisältää lähteet, rajat ja varmennuksen. Chat C:n staging-tiedostoja ei muutettu.

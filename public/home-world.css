@@ -1,0 +1,18 @@
+.home-world-frame { position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);overflow:hidden;background:#172337;isolation:isolate; }
+.world-layers { position:absolute;inset:0;pointer-events:none; }
+.world-layer { position:absolute;left:0;top:0;height:100%;max-width:none;object-fit:fill;user-select:none;pointer-events:none;will-change:transform; }
+.world-layer[data-plane="far"] { z-index:0; }
+.world-layer[data-plane="close"] { z-index:1; }
+.world-layer[data-plane="focus"] { z-index:2; }
+.world-layer[data-plane="foreground"] { z-index:4; }
+.bridge-world > .home-scene { display:none; }
+.bridge-world .home-character { z-index:3;bottom:auto;transform:translate(-50%,-100%);pointer-events:none; }
+.bridge-world .home-character svg { height:var(--world-avatar-height);width:calc(var(--world-avatar-height) / 2); }
+.bridge-world .home-character span { position:absolute;top:100%;white-space:nowrap;padding:3px 8px; }
+.home-menu { z-index:6; }
+.home-menu-toggle { position:absolute;right:25px;top:82px;z-index:8;background:#152136bd;font-size:11px; }
+.bridge-world.world-menu-hidden .home-menu { display:none; }
+.world-controls { position:absolute;left:22px;bottom:18px;z-index:7;color:#e8dccd;font-size:11px;background:#152136bd;padding:8px 12px;border-radius:4px;pointer-events:none; }
+body[data-table-environment="bridge"] .room-scene { object-fit:fill; }
+body[data-table-environment="bridge"] .table-center { top:55%; }
+body[data-table-environment="bridge"] .dealer-layer { display:none; }

@@ -1,5 +1,6 @@
 const $ = id => document.getElementById(id);
 const SETTINGS_KEY = 'casino-settings-v1';
+import { createHomeWorld } from './home-world.mjs';
 function stored(key) { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } }
 function remember(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* The current session remains usable when storage is unavailable. */ } }
 
@@ -7,6 +8,12 @@ export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer
   let profile = null;
   const preferences = stored(SETTINGS_KEY) || {};
   let lobbyOpen = false;
+  const world=createHomeWorld({home:$('home'),avatar:document.querySelector('.home-character'),frame:$('home-world'),layers:$('world-layers'),hint:$('world-controls')});
+  $('home-menu-toggle').onclick=()=>{
+    const hidden=$('home').classList.toggle('world-menu-hidden');
+    $('home-menu-toggle').textContent=hidden?'Show menu':'Hide menu';
+    $('home-menu-toggle').setAttribute('aria-expanded',String(!hidden));
+  };
 
   function updateProfile() {
     $('menu-character').textContent = profile ? `${profile.hands} ${profile.hands===1?'hand':'hands'} · ${profile.wins} ${profile.wins===1?'win':'wins'}` : 'Create a character to play';
@@ -23,9 +30,11 @@ export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer
       $('home-scene').alt=`${profile.home.name}, your character’s home.`;
       character.portrait($('home-avatar'));document.body.dataset.home=profile.home.id;
     }else{$('home-location').textContent='UNDER THE BRIDGE';$('home-scene').src='/assets/bridge.svg';$('home-avatar').querySelector('use').setAttribute('href','/assets/characters.svg#hoodie');$('home-avatar').style.color='#5c7e96';document.body.dataset.home='bridge';}
+    world.setEnvironment(profile?.home.id||'bridge',profile?.id||null);
   }
   function showScreen(screen) {
     document.body.dataset.screen = screen;
+    world.setActive(screen==='home');
     for (const [id, value] of [['home', 'home'], ['table', 'table']]) $(id).classList.toggle('hidden', screen !== value);
     document.querySelector('main').classList.toggle('in-room', screen === 'table');
     $('lobby-toggle').classList.toggle('hidden', screen !== 'table');
@@ -109,7 +118,8 @@ export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer
       $('entry').close(); showScreen('table'); $('lobby').classList.remove('hidden');
       const environment=['bridge','rental','loft','mansion'].includes(room.environment)?room.environment:'bridge';
       const asset=environment==='rental'?'home':environment;
-      $('table-scene').src=`/assets/table-${asset}.svg`;
+      $('table-scene').src=environment==='bridge'?'/assets/level-0/poker.png':`/assets/table-${asset}.svg`;
+      document.body.dataset.tableEnvironment=environment;
       const location={bridge:'Under the bridge',rental:'Rental apartment',loft:'City loft',mansion:'Hillside residence'}[environment];
       $('room-location').textContent=location;$('table-location').textContent=`${location.toUpperCase()} · ${room.singleplayer?'NPC':'ONLINE'} HOLD’EM · $5 / $10`;
       $('location').textContent=room.singleplayer?'SINGLEPLAYER':'MULTIPLAYER';
