@@ -1,76 +1,117 @@
-export const WORLD = Object.freeze({ width:3840, height:1080, viewport:1920, speed:430,
-  bounds:Object.freeze({left:384,right:3456,top:648,bottom:972}) });
-export const HOME_ASSETS=Object.freeze({bridge:'level-0',rental:'level-1'});
-const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
-export function initialPosition(){return {x:2688,y:842.4};}
-export function movePosition(position,dx,dy,seconds){
-  const length=Math.hypot(dx,dy)||1, distance=WORLD.speed*clamp(seconds,0,.05);
-  return {x:clamp(position.x+dx/length*distance,WORLD.bounds.left,WORLD.bounds.right),
-    y:clamp(position.y+dy/length*distance,WORLD.bounds.top,WORLD.bounds.bottom)};
+import { WORLD_GEOMETRY, DEFAULT_POSITION, safePosition, moveFootpoint, interactionAt } from './world-layout.mjs';
+
+export const WORLD = Object.freeze({ ...WORLD_GEOMETRY, viewport: 1920, speed: 430 });
+export const HOME_ASSETS = Object.freeze({ bridge: 'level-0', rental: 'level-1' });
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+export function initialPosition() { return { ...DEFAULT_POSITION }; }
+export function movePosition(position, dx, dy, seconds, environment) {
+  const length = Math.hypot(dx, dy);
+  const distance = WORLD.speed * (Number.isFinite(seconds) ? clamp(seconds, 0, .05) : 0);
+  if (!Number.isFinite(length) || !length) return safePosition(position, environment);
+  return moveFootpoint(position, dx / length * distance, dy / length * distance, environment);
 }
-export function cameraFor(x,current=initialPosition().x-WORLD.viewport/2,viewport=WORLD.viewport){
-  let camera=current;
-  if(x<camera+viewport*.2)camera=x-viewport*.2;
-  if(x>camera+viewport*.8)camera=x-viewport*.8;
-  return clamp(camera,0,WORLD.width-viewport);
+export function cameraFor(x, current = initialPosition().x - WORLD.viewport / 2, viewport = WORLD.viewport) {
+  let camera = current;
+  if (x < camera + viewport * .2) camera = x - viewport * .2;
+  if (x > camera + viewport * .8) camera = x - viewport * .8;
+  return clamp(camera, 0, WORLD.width - viewport);
 }
-export function layerLayout(camera,factor,anchor=initialPosition().x-WORLD.viewport/2,viewport=WORLD.viewport){
-  return {width:WORLD.width,x:clamp(-camera+(camera-anchor)*(1-factor),viewport-WORLD.width,0)};
+export function layerLayout(camera, factor, anchor = initialPosition().x - WORLD.viewport / 2, viewport = WORLD.viewport) {
+  return { width: WORLD.width, x: clamp(-camera + (camera - anchor) * (1 - factor), viewport - WORLD.width, 0) };
 }
 
-export function createHomeWorld({home,avatar,frame,layers,hint}){
-  let position=initialPosition(),environment='',identity=null,active=false,last=0,raf=0,scale=1,camera=null,anchor=null,viewport=1920,offsetY=0,previousWidth=0,previousHeight=0;
-  const keys=new Set(),planes=[...layers.querySelectorAll('[data-parallax]')];
-  const controls={KeyA:[-1,0],KeyD:[1,0],KeyW:[0,-1],KeyS:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};
-  const blocked=()=>document.hidden||Boolean(document.querySelector('dialog[open]'));
-  function draw(){
-    if(!HOME_ASSETS[environment])return;
-    camera=cameraFor(position.x,camera??position.x-viewport/2,viewport);anchor??=camera;
-    const reduced=document.body.classList.contains('reduce-motion')||matchMedia('(prefers-reduced-motion: reduce)').matches;
-    for(const plane of planes){const layout=layerLayout(camera,reduced?1:Number(plane.dataset.parallax),anchor,viewport);plane.style.width=`${layout.width*scale}px`;plane.style.height=`${WORLD.height*scale}px`;plane.style.transform=`translate(${layout.x*scale}px,${offsetY}px)`;}
-    avatar.style.left=`${(position.x-camera)*scale}px`;avatar.style.top=`${position.y*scale+offsetY}px`;
-    frame.dataset.x=String(position.x);frame.dataset.y=String(position.y);frame.dataset.camera=String(camera);
+const FORM_FOCUS = 'input,textarea,select,form button,[contenteditable]:not([contenteditable="false"]),[role="textbox"]';
+const MOVE_HINT = 'WASD / Arrow keys · Move';
+const isLayered = value => Object.hasOwn(HOME_ASSETS, value);
+export function createHomeWorld({ home, avatar, frame, layers, hint }) {
+  let position = initialPosition(), environment = '', identity = null, active = false, last = 0, raf = 0;
+  let scale = 1, camera = null, anchor = null, viewport = 1920, offsetY = 0, previousWidth = 0, previousHeight = 0;
+  let focused = document.hasFocus?.() !== false, heldInteract = false;
+  const keys = new Set(), planes = [...layers.querySelectorAll('[data-parallax]')];
+  const controls = { KeyA: [-1, 0], KeyD: [1, 0], KeyW: [0, -1], KeyS: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+  const visible = () => !home.hidden && !home.classList.contains('hidden') && document.body.dataset.screen === 'home' && home.clientWidth > 0 && home.clientHeight > 0;
+  const formFocus = target => Boolean(target?.closest?.(FORM_FOCUS));
+  const blocked = () => !focused || document.hidden || !visible() || Boolean(document.querySelector('dialog[open]')) || formFocus(document.activeElement);
+  const canAct = target => active && Boolean(identity && isLayered(environment)) && !blocked() && !formFocus(target);
+  function updateHint() {
+    const enabled = canAct(), target = enabled ? interactionAt(position, environment) : null;
+    const text = target ? `${MOVE_HINT} · E · ${target === 'poker' ? 'Poker table' : 'Computer'}` : MOVE_HINT;
+    if (hint.textContent !== text) hint.textContent = text;
+    hint.dataset.target = target || '';
+    hint.classList.toggle('hidden', !active || !identity || !visible() || !isLayered(environment));
   }
-  function resize(){
-    const width=home.clientWidth,height=home.clientHeight;
-    scale=Math.max(width/WORLD.viewport,height/WORLD.height);viewport=width/scale;offsetY=(height-WORLD.height*scale)/2;
-    if(width!==previousWidth||height!==previousHeight){camera=clamp(position.x-viewport/2,0,WORLD.width-viewport);anchor=camera;}
-    previousWidth=width;previousHeight=height;
-    frame.style.width=`${width}px`;frame.style.height=`${height}px`;
-    // Character height is in scene coordinates; feet stay anchored to the bounds.
-    avatar.style.setProperty('--world-avatar-height',`${250*scale}px`);draw();
+  hint.setAttribute('role', 'status');
+  hint.setAttribute('aria-live', 'polite');
+  function draw() {
+    if (!isLayered(environment)) { updateHint(); return; }
+    camera = cameraFor(position.x, camera ?? position.x - viewport / 2, viewport); anchor ??= camera;
+    const reduced = document.body.classList.contains('reduce-motion') || matchMedia('(prefers-reduced-motion: reduce)').matches;
+    for (const plane of planes) {
+      const layout = layerLayout(camera, reduced ? 1 : Number(plane.dataset.parallax), anchor, viewport);
+      plane.style.width = `${layout.width * scale}px`; plane.style.height = `${WORLD.height * scale}px`; plane.style.transform = `translate(${layout.x * scale}px,${offsetY}px)`;
+    }
+    avatar.style.left = `${(position.x - camera) * scale}px`; avatar.style.top = `${position.y * scale + offsetY}px`;
+    frame.dataset.x = String(position.x); frame.dataset.y = String(position.y); frame.dataset.camera = String(camera);
+    updateHint();
   }
-  function clear(){keys.clear();last=0;}
-  function tick(time){
-    if(!active)return;
-    const dt=last?(time-last)/1000:0;last=time;
-    if(blocked())keys.clear();
-    let dx=0,dy=0;for(const key of keys){dx+=controls[key][0];dy+=controls[key][1];}
-    if(dx||dy){position=movePosition(position,dx,dy,dt);if(dx)avatar.dataset.facing=dx<0?'left':'right';}
-    avatar.classList.toggle('walking',Boolean(dx||dy));draw();raf=requestAnimationFrame(tick);
+  function resize() {
+    const width = home.clientWidth, height = home.clientHeight;
+    if (!width || !height) { updateHint(); return; }
+    scale = Math.max(width / WORLD.viewport, height / WORLD.height); viewport = width / scale; offsetY = (height - WORLD.height * scale) / 2;
+    if (width !== previousWidth || height !== previousHeight) { camera = clamp(position.x - viewport / 2, 0, WORLD.width - viewport); anchor = camera; }
+    previousWidth = width; previousHeight = height;
+    frame.style.width = `${width}px`; frame.style.height = `${height}px`;
+    avatar.style.setProperty('--world-avatar-height', `${250 * scale}px`); draw();
   }
-  function activate(value){
-    active=Boolean(value&&HOME_ASSETS[environment]&&identity);clear();cancelAnimationFrame(raf);avatar.classList.remove('walking');
-    if(active)raf=requestAnimationFrame(tick);
+  function clear() { keys.clear(); heldInteract = false; last = 0; avatar.classList.remove('walking'); }
+  function tick(time) {
+    if (!active) return;
+    const dt = last ? (time - last) / 1000 : 0; last = time;
+    if (blocked()) clear();
+    let dx = 0, dy = 0;
+    for (const key of keys) { dx += controls[key][0]; dy += controls[key][1]; }
+    dx = Math.sign(dx); dy = Math.sign(dy);
+    const previous = position;
+    if (dx || dy) { position = movePosition(position, dx, dy, dt, environment); if (dx) avatar.dataset.facing = dx < 0 ? 'left' : 'right'; }
+    avatar.classList.toggle('walking', position.x !== previous.x || position.y !== previous.y);
+    draw(); raf = requestAnimationFrame(tick);
   }
-  document.addEventListener('keydown',event=>{
-    if(!active||!controls[event.code]||event.ctrlKey||event.metaKey||event.altKey||blocked()||event.target.closest?.('input,textarea,select,[contenteditable="true"]'))return;
-    event.preventDefault();keys.add(event.code);
+  function activate(value) {
+    active = Boolean(value && isLayered(environment) && identity); clear(); cancelAnimationFrame(raf);
+    updateHint(); if (active) raf = requestAnimationFrame(tick);
+  }
+  document.addEventListener('keydown', event => {
+    if (event.code !== 'KeyE' && !controls[event.code]) return;
+    const modified = event.ctrlKey || event.metaKey || event.altKey;
+    if (event.code === 'KeyE') {
+      const held = heldInteract; heldInteract = true;
+      if (held || event.repeat || modified || !canAct(event.target)) return;
+      const target = interactionAt(position, environment);
+      if (target) { event.preventDefault(); home.dispatchEvent(new CustomEvent('home-interact', { bubbles: true, detail: { target, environment } })); }
+      return;
+    }
+    if (modified || !canAct(event.target)) { clear(); updateHint(); return; }
+    if (event.repeat && !keys.has(event.code)) return;
+    event.preventDefault(); keys.add(event.code);
   });
-  document.addEventListener('keyup',event=>keys.delete(event.code));
-  window.addEventListener('blur',clear);document.addEventListener('visibilitychange',clear);
+  document.addEventListener('keyup', event => { keys.delete(event.code); if (event.code === 'KeyE') heldInteract = false; });
+  window.addEventListener('blur', () => { focused = false; clear(); updateHint(); });
+  window.addEventListener('focus', () => { focused = true; clear(); updateHint(); });
+  document.addEventListener('visibilitychange', () => { clear(); updateHint(); });
   new ResizeObserver(resize).observe(home);
   return {
-    setEnvironment(value,id){
-      const changed=value!==environment||id!==identity;environment=value;identity=id;
-      const layered=Boolean(HOME_ASSETS[value]);home.classList.toggle('layered-world',layered);frame.classList.toggle('hidden',!layered);
-      if(layered)for(const plane of planes){const name=plane.dataset.plane==='far'?'background-far':plane.dataset.plane==='close'?'background-close':plane.dataset.plane;const src=`/assets/${HOME_ASSETS[value]}/${name}.png`;if(plane.getAttribute('src')!==src)plane.src=src;}
-      hint.classList.toggle('hidden',!layered||!identity);
-      if(layered&&avatar.parentElement!==frame)frame.append(avatar);
-      if(!layered&&avatar.parentElement!==home){home.append(avatar);avatar.style.removeProperty('left');avatar.style.removeProperty('top');}
-      if(changed){position=initialPosition();camera=null;anchor=null;activate(document.body.dataset.screen==='home');}
+    setEnvironment(value, id) {
+      const changed = value !== environment || id !== identity; environment = value; identity = id;
+      const layered = isLayered(value); home.classList.toggle('layered-world', layered); frame.classList.toggle('hidden', !layered);
+      if (layered) for (const plane of planes) {
+        const name = plane.dataset.plane === 'far' ? 'background-far' : plane.dataset.plane === 'close' ? 'background-close' : plane.dataset.plane;
+        const src = `/assets/${HOME_ASSETS[value]}/${name}.png`; if (plane.getAttribute('src') !== src) plane.src = src;
+      }
+      if (layered && avatar.parentElement !== frame) frame.append(avatar);
+      if (!layered && avatar.parentElement !== home) { home.append(avatar); avatar.style.removeProperty('left'); avatar.style.removeProperty('top'); }
+      if (changed) { position = safePosition(initialPosition(), environment); camera = null; anchor = null; activate(document.body.dataset.screen === 'home'); }
       resize();
     },
-    setActive:activate
+    setActive: activate
   };
 }
