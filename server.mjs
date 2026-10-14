@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import { startHand, act, viewHand, legalActions } from './poker.mjs';
 import { createEconomy } from './economy.mjs';
 import { botAction } from './bots.mjs';
+import { createNpcSeats, npcProfile, npcPublicProfile } from './npc-roster.mjs';
 
 const publicFiles = new Map([['/', ['index.html', 'text/html']], ['/app.js', ['app.js', 'text/javascript']], ['/shell.js', ['shell.js', 'text/javascript']], ['/style.css', ['style.css', 'text/css']], ['/shell.css', ['shell.css', 'text/css']], ['/assets/dealer.svg', ['assets/dealer.svg', 'image/svg+xml']], ['/assets/home.svg', ['assets/home.svg', 'image/svg+xml']], ['/assets/cellar.svg', ['assets/cellar.svg', 'image/svg+xml']], ['/assets/avatars.svg', ['assets/avatars.svg', 'image/svg+xml']]]);
 for(const name of ['bridge','loft','mansion','characters','table-bridge','table-home','table-loft','table-mansion'])publicFiles.set(`/assets/${name}.svg`,[`assets/${name}.svg`,'image/svg+xml']);
@@ -52,7 +53,7 @@ function allowRequest(key, limit) {
   return ++bucket.count <= limit;
 }
 function snapshot(room, id) {
-  return { code: room.code, singleplayer: Boolean(room.singleplayer), environment: room.environment || 'bridge', players: room.players.map(p => ({ id: p.id, name: p.name, appearance:p.appearance, bot:Boolean(p.bot), stack: room.hand?.seats.find(s => s.id === p.id)?.stack ?? p.stack, ready: p.ready, host: p.id === room.host, connected: p.bot || Boolean(streams.get(p.id)?.size) })), character: room.players.find(p=>p.id===id)?.characterId ? economy.view(room.players.find(p=>p.id===id).characterId) : null, stage: room.hand ? 'table' : 'lobby', hand: viewHand(room.hand, id), deadline: room.deadline || null, serverTime: now(), turnDuration: options.turnMs ?? 60000 };
+  return { code: room.code, singleplayer: Boolean(room.singleplayer), environment: room.environment || 'bridge', players: room.players.map(p => ({ id: p.id, name: p.name, appearance:p.appearance, bot:Boolean(p.bot), npc:npcPublicProfile(p), stack: room.hand?.seats.find(s => s.id === p.id)?.stack ?? p.stack, ready: p.ready, host: p.id === room.host, connected: p.bot || Boolean(streams.get(p.id)?.size) })), character: room.players.find(p=>p.id===id)?.characterId ? economy.view(room.players.find(p=>p.id===id).characterId) : null, stage: room.hand ? 'table' : 'lobby', hand: viewHand(room.hand, id), deadline: room.deadline || null, serverTime: now(), turnDuration: options.turnMs ?? 60000 };
 }
 function broadcast(room) {
   for (const p of room.players) for (const stream of streams.get(p.id) || []) stream.write(`data: ${JSON.stringify(snapshot(room, p.id))}\n\n`);
@@ -68,7 +69,7 @@ function scheduleTurn(room) {
   room.timer = setTimeout(() => {
     const id = room.hand.seats[room.hand.turn]?.id;
     const legal = legalActions(room.hand, id);
-    if (legal) { const move=actor?.bot ? botAction(room.hand,id) : {action:legal.canCheck?'check':'fold'}; act(room.hand,id,move.action,move.amount); }
+    if (legal) { const move=actor?.bot ? botAction(room.hand,id,undefined,npcProfile(actor.npcProfileId)?.style) : {action:legal.canCheck?'check':'fold'}; act(room.hand,id,move.action,move.amount); }
     scheduleTurn(room); broadcast(room);
   }, duration);
   room.timer.unref();
@@ -172,7 +173,7 @@ async function body(req) {
         const player = { id: randomUUID(), name, characterId, appearance:character?{outfit:character.outfit,color:character.color}:null, ready: Boolean(room.singleplayer), stack: chips, disconnectedAt: now() };
         if (!room.host) room.host = player.id;
         room.players.push(player);
-        if(room.singleplayer){room.players.push(...['Mara','Jules'].map((name,i)=>({id:randomUUID(),name,bot:true,ready:true,stack:chips,appearance:{outfit:i?'beanie':'coat',color:i?'plum':'amber'}})));}
+        if(room.singleplayer)room.players.push(...createNpcSeats(chips));
         rooms.set(room.code,room);
         sessions.set(token, { room, player }); broadcast(room);
         return reply(res, 200, { token, playerId: player.id, room: snapshot(room, player.id) });
