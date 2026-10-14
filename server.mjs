@@ -15,6 +15,7 @@ publicFiles.set('/character.js',['character.js','text/javascript']);
 publicFiles.set('/rpg.css',['rpg.css','text/css']);
 publicFiles.set('/home-world.mjs',['home-world.mjs','text/javascript']);
 publicFiles.set('/world-layout.mjs',['world-layout.mjs','text/javascript']);
+publicFiles.set('/home-social.mjs',['home-social.mjs','text/javascript']);
 publicFiles.set('/home-world.css',['home-world.css','text/css']);
 for(const level of [0,1])for(const name of ['background-far','background-close','focus','foreground','poker'])publicFiles.set(`/assets/level-${level}/${name}.png`,[`assets/level-${level}/${name}.png`,'image/png']);
 export function createServer(options = {}) {

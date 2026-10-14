@@ -179,3 +179,24 @@ Omistus: oman worktreen design-staging/ ja docs/DESIGN_ASSETS.md. Älä muuta pu
 
 Jokainen lukee aktiivisen Vaihe 4:n kanonisesta pääkansiosta. B:n tekninen työkopio päivitetään yhteiseen pohjaan; C:n aktiiviset assetit säilytetään ennallaan. Ei samanaikaisia muutoksia toisen omistamiin tiedostoihin. Omat raportit sisältävät commitit, testit, rajat ja integraatiotarpeet. Chat A yhdistää tekniset osuudet vasta niiden valmistuttua ja lisää tarvittavat static-reitit. Ei pushia tai deployta. Ei uusia kasinopelejä, progression muutoksia tai assettien käyttöönottoa tämän teknisen työn sivutuotteena.
 Chat A / vaihe 4: Kotilobbyn backend valmis. Maksuton jäsenyys, kutsukoodit, hostin siirto, yksi jäsenyys/hahmo, kapasiteetti ja idle-siivous toteutettu. Hahmon palautus/poisto käsittelevät kotijäsenyyden; pokerin varaukset ja raha säilyvät erillisinä. API-sopimus ja rajat docs/HOME_LOBBY.md. Kaikki 63 testiä läpäisevät. Ei B:n tiedostojen muutoksia, assetteja, pushia tai deployta.
+Chat A / vaihe 4: Toteutuksen commit 37c2125 haarassa codex/home-lobby. Oma palvelinosuus valmis seuraavaan integraatioon, kun B valmistuu.
+
+# Vaihe 5 – aktiivinen työnjako
+
+B:n vaihe 4 (a2ec1a9, 825ba18) yhdistetty Chat A:n kotilobbyyn. /world-layout.mjs-static-reitti lisätty. Yhteinen tekninen pohja: 2c1ae4c.
+
+Chat A jatkaa kotilobbyn käyttöliittymää: maksuton luonti/liittyminen, jäsenlista, kutsulinkki, hostin siirto, poistuminen, pollaus ja hostin kotiympäristön näyttäminen. Omistus public/shell.js, public/character.js, public/app.js, public/index.html, uusi public/home-social.mjs, toiminnallinen CSS ja server.mjs-static-reitit, test/home-social*.test.mjs sekä docs/HOME_SOCIAL_UI.md. B:n world-layout/home-world-moduuleja ei muokata samanaikaisesti; mahdollinen world-ympäristön päivitys tehdään niiden olemassa olevalla rajapinnalla. Pokerin E avaa nykyisen NPC-dialogin; läppärin E näyttää nykyisen Coming soon -dialogin ilman uutta kasinopeliä. Kotilobby ja vanha pokerilobby ovat erilliset toiminnot tässä vaiheessa; yhteinen kotipokeripöytä tehdään seuraavaksi.
+
+## Chat B: hahmojen palvelinpuolen liikesynkronoinnin pohja
+
+Kansio C:\Users\Teemu\.codex\worktrees\npc-gameplay\CASINO ROYALE
+Haara codex/home-presence, pohja 2c1ae4c.
+
+Toteuta erillinen home-presence.mjs, test/home-presence*.test.mjs ja docs/HOME_PRESENCE.md. Älä muuta server.mjs:ää, home-lobby.mjs:ää, public/-tiedostoja tai taloutta. Integrointi Chat A:ssa myöhemmin. Voi käyttää public/world-layout.mjs:n puhtaita geometriafunktioita read-onlyna.
+
+Mallinna yhden kotilobbyn jäsenten spawn, sijainti, facing ja revision. Kotilobbyn jäsenyys annetaan luotetulla server-adapterin callbackilla; client ei saa luoda jäseniä tai valita home-ympäristöä. Hyväksy vain äärelliset koordinaatit, oikea jäsenyys, sallittu liikealue ja nopeusraja palvelimen kellosta. Käytä samaa este-/jalkapistemallia; älä hyväksy teleportausta tai seinän läpi kulkevaa siirtymää. Hylätty liike ei muuta tilaa. Viestien sequence-id estää vanhat/toistetut siirrot. Älä käytä clientin kellonaikaa nopeusrajan totuutena. Jäsenen poistuessa siivoa tila, rajaa jäsenmäärä nykyiseen kapasiteettiin. Snapshot ei paljasta käyttö-/palautusavaimia tai taloutta. Ei uusia verkkoreittejä, SSE:tä tai frontend-hahmojen renderöintiä tässä osuudessa.
+
+Raportoi tarkka adapterisopimus, parametrit ja rajoitukset. Testaa väärä jäsenyys, luvaton ympäristön vaihto, NaN/Infinity, liikerajat, esteen läpäisy, nopeusraja, vanha sequence, eri pelaajien riippumattomuus, poisto ja ajan eteneminen. Koko npm test läpäisee. Tee rajatut commitit. Ei mergeä, pushia tai deployta.
+
+Chat C jatkaa hahmodesignia ja muita assetteja ennallaan omassa worktreessään. Ei assettien automaattista integraatiota.
+Chat A / vaihe 5: Kotilobbyn käyttöliittymä, kotikutsulinkit, jäsenlista, hostin siirto ja poistuminen sekä E-dialogikytkennät valmiit. B:n world-layout static-route lisätty. 78/78 testiä ja kahden erillisen testiselaimen maksuttoman vierailun koe läpäisevät. Raportti docs/HOME_SOCIAL_UI.md. B:n codex/home-presence-työhaara on valmis pohjasta 2c1ae4c; C:n assettityö ennallaan.

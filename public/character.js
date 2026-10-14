@@ -194,7 +194,7 @@ export function createCharacterManager({onChange,onError,onSingleplayer,onIdenti
     $('recovery-dialog').close();$('character-modal').close();
   });};
   const ready=refresh();
-  return {ready,get token(){return client.token;},stamp:client.stamp,isCurrent:client.isCurrent,assertCurrent:client.assertCurrent,gameRequest:client.gameRequest,isResponseCurrent:client.isResponseCurrent,get profile(){return profile;},update,refresh,portrait,ensure,
+  return {ready,get token(){return client.token;},homeRequest:client.request,stamp:client.stamp,isCurrent:client.isCurrent,assertCurrent:client.assertCurrent,gameRequest:client.gameRequest,isResponseCurrent:client.isResponseCurrent,get profile(){return profile;},update,refresh,portrait,ensure,
     open(key){if(key==='character'){void ready.then(openCharacter);return;}void ensure(()=>{if(key==='bank'){renderBank();$('bank-dialog').showModal();}else if(key==='jobs'){$('job-dialog').showModal();}else if(key==='singleplayer'){$('singleplayer-dialog').showModal();}});}
   };
 }

@@ -287,4 +287,6 @@ try {
     if (restored) { session = restored; render(await request('/api/session')); if (session) connect(); }
   }
 } catch (error) { if (!error.stale) resetSession(); }
-if (hasInvite && !session) ui.ensureProfile('entry');
+const homeInvite=new URL(location.href).searchParams.get('home');
+if(homeInvite&&/^[A-F0-9]{6}$/i.test(homeInvite)&&!session)ui.openHome(homeInvite.toUpperCase());
+else if (hasInvite && !session) ui.ensureProfile('entry');

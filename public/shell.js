@@ -1,6 +1,7 @@
 const $ = id => document.getElementById(id);
 const SETTINGS_KEY = 'casino-settings-v1';
 import { createHomeWorld, HOME_ASSETS } from './home-world.mjs';
+import { createHomeSocialClient } from './home-social.mjs';
 function stored(key) { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } }
 function remember(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* The current session remains usable when storage is unavailable. */ } }
 
@@ -8,6 +9,7 @@ export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer
   let profile = null;
   const preferences = stored(SETTINGS_KEY) || {};
   let lobbyOpen = false;
+  let social=null;
   const world=createHomeWorld({home:$('home'),avatar:document.querySelector('.home-character'),frame:$('home-world'),layers:$('world-layers'),hint:$('world-controls')});
 
   function updateProfile() {
@@ -25,7 +27,15 @@ export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer
       $('home-scene').alt=`${profile.home.name}, your character’s home.`;
       character.portrait($('home-avatar'));document.body.dataset.home=profile.home.id;
     }else{$('home-location').textContent='UNDER THE BRIDGE';$('home-scene').src='/assets/bridge.svg';$('home-avatar').querySelector('use').setAttribute('href','/assets/characters.svg#hoodie');$('home-avatar').style.color='#5c7e96';document.body.dataset.home='bridge';}
-    world.setEnvironment(profile?.home.id||'bridge',profile?.id||null);
+    const visited=social?.home?.environment;
+    if(visited){
+      const homeNames={bridge:'Under the bridge',rental:'Rental apartment',loft:'City loft',mansion:'Hillside residence'};
+      const environment=Object.hasOwn(homeNames,visited)?visited:'bridge';
+      $('home-location').textContent=`HOME LOBBY · ${homeNames[environment].toUpperCase()}`;
+      $('home-scene').src=`/assets/${environment==='rental'?'home':environment}.svg`;
+      document.body.dataset.home=environment;
+    }
+    world.setEnvironment(visited||profile?.home.id||'bridge',profile?.id||null);
   }
   function showScreen(screen) {
     document.body.dataset.screen = screen;
@@ -68,6 +78,14 @@ export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer
   }
   $('singleplayer').onclick = () => ensureProfile('casino');
   $('multiplayer').onclick = () => ensureProfile('entry');
+  $('home-social-open').onclick=()=>openHome();
+  $('home').addEventListener('home-interact',event=>{
+    if(document.body.dataset.screen!=='home'||document.querySelector('dialog[open]'))return;
+    if(event.detail?.target==='poker')character.open('singleplayer');
+    else if(event.detail?.target==='computer'){
+      $('feature-title').textContent='Computer';$('feature-description').textContent='Online casino games are coming later.';$('feature-info').showModal();
+    }
+  });
   $('character-button').onclick = () => character.open('character');
   document.querySelectorAll('[data-close]').forEach(button => button.onclick = () => $(button.dataset.close).close());
   document.querySelectorAll('[data-feature]').forEach(button => button.onclick = () => character.open(button.dataset.feature));
@@ -99,7 +117,53 @@ export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer
     if (getRoom() && lobbyOpen) { setLobby(false); event.preventDefault(); }
     else if (getRoom()) { openMenu(); event.preventDefault(); }
   });
-  const character=createCharacterManager({onChange:c=>{profile=c;updateProfile();},onError,onSingleplayer,onIdentityChange,hasTable:()=>Boolean(getRoom())});
+  const character=createCharacterManager({onChange:c=>{profile=c;updateProfile();},onError,onSingleplayer,onIdentityChange:()=>{social?.reset();onIdentityChange?.();},hasTable:()=>Boolean(getRoom())});
+  function renderHome(home){
+    $('home-empty').classList.toggle('hidden',Boolean(home));$('home-membership').classList.toggle('hidden',!home);
+    $('home-social-open').querySelector('small').textContent=home?`${home.players.length} / ${home.capacity} friends · ${home.code}`:'Free visits with friends';
+    $('home-roster').replaceChildren();$('home-host-target').replaceChildren();
+    if(!home){$('home-code').textContent='';$('home-invite-url').value='';$('home-invite-result').classList.add('hidden');$('home-copy-status').textContent='';}
+    if(home){
+      $('home-code').textContent=home.code;
+      for(const player of home.players){
+        const li=document.createElement('li');li.textContent=`${player.name}${player.id===profile?.id?' (you)':''}${player.host?' · Host':''}`;$('home-roster').append(li);
+        if(player.id!==profile?.id){const option=document.createElement('option');option.value=player.id;option.textContent=player.name;$('home-host-target').append(option);}
+      }
+      $('home-transfer-form').classList.toggle('hidden',home.hostId!==profile?.id||home.players.length<2);
+    }
+    updateProfile();
+  }
+  social=createHomeSocialClient({request:character.homeRequest,onChange:renderHome});
+  async function refreshHome(){
+    if(!character.token)return;
+    try{await social.refresh();$('home-social-status').textContent='';}
+    catch(error){if(!error.stale)$('home-social-status').textContent=error.message;}
+  }
+  function openHome(code){
+    void character.ensure(()=>{
+      if(code)$('home-join-code').value=code;
+      renderHome(social.home);$('home-social-dialog').showModal();void refreshHome();
+    });
+  }
+  async function homeAction(fn){
+    if(social.busy)return;
+    document.querySelectorAll('[data-home-action]').forEach(e=>e.disabled=true);
+    try{await fn();$('home-social-status').textContent='';}
+    catch(error){if(!error.stale)$('home-social-status').textContent=error.message;}
+    finally{document.querySelectorAll('[data-home-action]').forEach(e=>e.disabled=false);}
+  }
+  $('home-create').onclick=()=>void homeAction(()=>social.create());
+  $('home-join-form').onsubmit=event=>{event.preventDefault();void homeAction(()=>social.join($('home-join-code').value));};
+  $('home-leave').onclick=()=>void homeAction(()=>social.leave());
+  $('home-transfer-form').onsubmit=event=>{event.preventDefault();void homeAction(()=>social.transfer($('home-host-target').value));};
+  $('home-copy').onclick=()=>void homeAction(async()=>{
+    if(!social.home)return;const url=new URL('/',location.origin);url.searchParams.set('home',social.home.code);$('home-invite-url').value=url.href;$('home-invite-result').classList.remove('hidden');
+    try{await navigator.clipboard.writeText(url.href);$('home-copy-status').textContent='Invite link copied.';}
+    catch{$('home-invite-url').focus();$('home-invite-url').select();$('home-copy-status').textContent='Copy the selected invite link manually.';}
+  });
+  $('home-social-dialog').addEventListener('close',()=>{$('home-invite-url').value='';$('home-copy-status').textContent='';$('home-invite-result').classList.add('hidden');});
+  setInterval(()=>{if(!document.hidden&&profile&&(social.home||document.body.dataset.screen==='home'))void refreshHome();},15000);
+  void character.ready.then(refreshHome);
   updateProfile(); applyGraphics(); setLobby(false); showScreen('home');
   // AudioContext is resumed through the first real user gesture, never on page load.
   document.addEventListener('pointerdown', () => { if (preferences.sound) void onSound(true); }, { once: true });
@@ -108,6 +172,7 @@ export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer
     preferences,
     ensureProfile,
     openEntry,
+    openHome,
     saveSound(value) { preferences.sound = value; remember(SETTINGS_KEY, preferences); $('setting-sound').checked = value; },
     syncRoom(room, previous) {
       $('entry').close(); showScreen('table'); $('lobby').classList.remove('hidden');
