@@ -26,6 +26,8 @@ const isLayered = value => Object.hasOwn(HOME_ASSETS, value);
 export function createHomeWorld({ home, avatar, frame, layers, hint }) {
   let networkOrigin=null;
   const remotes=new Map();
+  const hotspot=document.getElementById?.('home-poker-hotspot');
+  if(hotspot)hotspot.onclick=()=>{if(canAct(hotspot)&&interactionAt(position,environment)==='poker')home.dispatchEvent(new CustomEvent('home-interact',{bubbles:true,detail:{target:'poker',environment}}));};
   let position = initialPosition(), environment = '', identity = null, active = false, last = 0, raf = 0;
   let scale = 1, camera = null, anchor = null, viewport = 1920, offsetY = 0, previousWidth = 0, previousHeight = 0;
   let focused = document.hasFocus?.() !== false, heldInteract = false;
@@ -54,6 +56,7 @@ export function createHomeWorld({ home, avatar, frame, layers, hint }) {
     }
     avatar.style.left = `${(position.x - camera) * scale}px`; avatar.style.top = `${position.y * scale + offsetY}px`;
     frame.dataset.x = String(position.x); frame.dataset.y = String(position.y); frame.dataset.camera = String(camera);
+    if(hotspot){const rect=environment==='rental'?{x:760,y:730,width:650,height:220}:{x:860,y:640,width:500,height:250};hotspot.style.left=`${(rect.x-camera)*scale}px`;hotspot.style.top=`${rect.y*scale+offsetY}px`;hotspot.style.width=`${rect.width*scale}px`;hotspot.style.height=`${rect.height*scale}px`;hotspot.disabled=!canAct()||interactionAt(position,environment)!=='poker';}
     for(const remote of remotes.values()){
       remote.node.style.left=`${(remote.pose.x-camera)*scale}px`;remote.node.style.top=`${remote.pose.y*scale+offsetY}px`;
       remote.node.style.setProperty('--world-avatar-height',avatar.style.getPropertyValue('--world-avatar-height'));

@@ -23,7 +23,7 @@ export const WORLD_LAYOUTS = Object.freeze({
     rectangle('tent-base', 2040, 720, 535, 82),
     rectangle('fire-barrel', 2595, 737, 100, 79),
     rectangle('firewood', 2730, 790, 105, 40)
-  ], [approach('poker', 1100, 925, 110), approach('computer', 550, 850, 90)]),
+  ], [approach('poker',1250,925,210), approach('computer', 550, 850, 90)]),
   rental: layout([
     rectangle('kitchen-base', 384, 838, 20, 134),
     rectangle('fridge', 422, 760, 175, 85),

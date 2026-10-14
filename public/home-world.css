@@ -20,4 +20,6 @@
 .world-controls { position:absolute;left:22px;bottom:18px;z-index:7;color:#e8dccd;font-size:11px;background:#152136bd;padding:8px 12px;border-radius:4px;pointer-events:none; }
 body:is([data-table-environment="bridge"],[data-table-environment="rental"]) .room-scene { object-fit:fill; }
 body:is([data-table-environment="bridge"],[data-table-environment="rental"]) .table-center { top:55%; }
-body:is([data-table-environment="bridge"],[data-table-environment="rental"]) .dealer-layer { display:none; }
+body:is([data-table-environment="bridge"],[data-table-environment="rental"]) .dealer-layer { display:none; }.world-poker-hotspot { position:absolute;z-index:5;background:transparent;border:0;box-shadow:none;padding:0;opacity:1;cursor:pointer; }
+.world-poker-hotspot:disabled { cursor:default;background:transparent; }
+.world-poker-hotspot:not(:disabled):hover,.world-poker-hotspot:focus-visible { background:#d2b6a00b;outline:2px solid #d2b6a088;outline-offset:-3px; }
