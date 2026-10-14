@@ -1,4 +1,4 @@
-.home-world-frame { position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);overflow:hidden;background:#172337;isolation:isolate; }
+.home-world-frame { position:absolute;left:0;top:0;overflow:hidden;background:#172337;isolation:isolate; }
 .world-layers { position:absolute;inset:0;pointer-events:none; }
 .world-layer { position:absolute;left:0;top:0;height:100%;max-width:none;object-fit:fill;user-select:none;pointer-events:none;will-change:transform; }
 .world-layer[data-plane="far"] { z-index:0; }
@@ -10,8 +10,11 @@
 .bridge-world .home-character svg { height:var(--world-avatar-height);width:calc(var(--world-avatar-height) / 2); }
 .bridge-world .home-character span { position:absolute;top:100%;white-space:nowrap;padding:3px 8px; }
 .home-menu { z-index:6; }
-.home-menu-toggle { position:absolute;right:25px;top:82px;z-index:8;background:#152136bd;font-size:11px; }
-.bridge-world.world-menu-hidden .home-menu { display:none; }
+.bridge-world .home-menu { position:absolute;right:0;top:0;bottom:0;height:100%;overflow-y:auto;padding-top:65px;background:linear-gradient(90deg,#101a2900,#101a29df 20%,#101a29f2);transform:translateX(calc(100% - 18px));transition:transform .22s ease; }
+.bridge-world .home-menu:hover,.bridge-world .home-menu:focus-within { transform:translateX(0); }
+.topbar,body:has(main.in-room) .topbar { height:52px;min-height:0;padding:0 22px;background:linear-gradient(#111b2980,transparent);pointer-events:none; }
+.topbar a,.topbar button { pointer-events:auto; }
+@media(hover:none) { .bridge-world .home-menu { transform:translateX(calc(100% - 44px)); } }
 .world-controls { position:absolute;left:22px;bottom:18px;z-index:7;color:#e8dccd;font-size:11px;background:#152136bd;padding:8px 12px;border-radius:4px;pointer-events:none; }
 body[data-table-environment="bridge"] .room-scene { object-fit:fill; }
 body[data-table-environment="bridge"] .table-center { top:55%; }

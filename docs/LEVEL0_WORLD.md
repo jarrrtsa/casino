@@ -30,3 +30,11 @@ Erillinen oikea selain (1600 × 900) ja muistissa oleva testitietokanta varmensi
 
 Kotivalikon piilottaminen/avaaminen varmennettiin vielä erillisessä selainajossa. Molemmat reunaesikatselut ja pokeriesikatselu tallennettiin ignored screenshots/-kansioon. Commit-tunniste kirjataan kanoniseen työnjakoon.
 
+
+## Kohdistuksen ja valikon korjaus käyttäjäpalautteesta
+
+Kaikki layerit käyttävät samaa 3840 × 1080 -renderöintikokoa ja samaa lähtökohdistusta. Etualaa ei enää levennetä erikseen. Kamera käyttää 20–80 % ruudun levyistä liikkumavaraa: seuraaminen alkaa vasta hahmon lähestyessä reunaa. Parallax on hillitty (0.92 / 0.98 / 1 / 1.03), alkaa yhteisestä kohdistuksesta ja pysyy kuvan peittorajoissa. W/S ei muuta kameraa. Näkymä täyttää koko pelialueen cover-sovituksella myös muissa kuin 16:9-kuvasuhteissa; tällöin kuva rajautuu, eikä ylä-/alareunaan jää tyhjää palkkia.
+
+Yläpalkki on 52 px ja läpinäkyvä. Kotivalikko vetäytyy oikealle jättäen 18 px reunan; hiiren vieminen reunaan tai näppäimistöfokus tuo sen esiin. Tausta ja vieritys kattavat koko valikon korkeuden. Hide menu -painike poistettiin. Kosketuslaitteelle jää 44 px reunakaista.
+
+56 testiä läpäisee. Oikea selain varmisti yhtenäiset layerleveydet, liikkumisen ilman välitöntä kameraseurantaa, seuraamisen reunan lähellä, 1040 × 888 fullscreen-näkymän ilman tyhjää ylä-/alapalkkia, 52 px headerin sekä koko korkeuden reunavalikon. JavaScript-virheitä ei ollut.

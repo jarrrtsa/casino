@@ -20,12 +20,12 @@ test('only horizontal movement changes the camera; every layer covers both camer
   assert.equal(cameraFor(up.x),cameraFor(start.x));
   assert.equal(cameraFor(WORLD.bounds.left),0);
   assert.equal(cameraFor(WORLD.bounds.right),WORLD.width-WORLD.viewport);
-  for(const factor of [.2,.75,1,1.12])for(const camera of [0,960,1920]){
+  for(const factor of [.92,.98,1,1.03])for(const camera of [0,960,1920]){
     const layout=layerLayout(camera,factor);
     assert.ok(layout.x<=0);assert.ok(layout.x+layout.width>=WORLD.viewport);
   }
-  const farA=layerLayout(0,.2),farB=layerLayout(100,.2),focusA=layerLayout(0,1),focusB=layerLayout(100,1);
-  assert.equal(farB.x-farA.x,-20);assert.equal(focusB.x-focusA.x,-100);
+  const farA=layerLayout(1000,.92),farB=layerLayout(1100,.92),focusA=layerLayout(1000,1),focusB=layerLayout(1100,1);
+  assert.ok(Math.abs(farB.x-farA.x+92)<1e-9);assert.equal(focusB.x-focusA.x,-100);
 });
 
 test('world module, styles and all five PNGs are served through the game server',async()=>{
@@ -41,3 +41,11 @@ test('world module, styles and all five PNGs are served through the game server'
     }
   }finally{server.closeAllConnections();await new Promise(r=>server.close(r));}
 });
+
+test('camera waits inside its dead zone and layers share the original size and anchor',()=>{
+  assert.equal(cameraFor(2500,1728),1728);
+  assert.equal(cameraFor(2200,1728),1728);
+  assert.equal(cameraFor(2000,1728),1616);
+  for(const factor of [.92,.98,1,1.03])assert.deepEqual(layerLayout(1728,factor),{width:3840,x:-1728});
+});
+

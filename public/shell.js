@@ -9,11 +9,6 @@ export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer
   const preferences = stored(SETTINGS_KEY) || {};
   let lobbyOpen = false;
   const world=createHomeWorld({home:$('home'),avatar:document.querySelector('.home-character'),frame:$('home-world'),layers:$('world-layers'),hint:$('world-controls')});
-  $('home-menu-toggle').onclick=()=>{
-    const hidden=$('home').classList.toggle('world-menu-hidden');
-    $('home-menu-toggle').textContent=hidden?'Show menu':'Hide menu';
-    $('home-menu-toggle').setAttribute('aria-expanded',String(!hidden));
-  };
 
   function updateProfile() {
     $('menu-character').textContent = profile ? `${profile.hands} ${profile.hands===1?'hand':'hands'} · ${profile.wins} ${profile.wins===1?'win':'wins'}` : 'Create a character to play';

@@ -7,28 +7,35 @@ export function movePosition(position,dx,dy,seconds){
   return {x:clamp(position.x+dx/length*distance,WORLD.bounds.left,WORLD.bounds.right),
     y:clamp(position.y+dy/length*distance,WORLD.bounds.top,WORLD.bounds.bottom)};
 }
-export const cameraFor=x=>clamp(x-WORLD.viewport/2,0,WORLD.width-WORLD.viewport);
-export function layerLayout(camera,factor){
-  const travel=WORLD.width-WORLD.viewport;
-  const width=WORLD.width+Math.max(0,factor-1)*travel;
-  return {width,x:-(width-WORLD.viewport)/2-(camera-travel/2)*factor};
+export function cameraFor(x,current=initialPosition().x-WORLD.viewport/2,viewport=WORLD.viewport){
+  let camera=current;
+  if(x<camera+viewport*.2)camera=x-viewport*.2;
+  if(x>camera+viewport*.8)camera=x-viewport*.8;
+  return clamp(camera,0,WORLD.width-viewport);
+}
+export function layerLayout(camera,factor,anchor=initialPosition().x-WORLD.viewport/2,viewport=WORLD.viewport){
+  return {width:WORLD.width,x:clamp(-camera+(camera-anchor)*(1-factor),viewport-WORLD.width,0)};
 }
 
 export function createHomeWorld({home,avatar,frame,layers,hint}){
-  let position=initialPosition(),environment='',identity=null,active=false,last=0,raf=0,scale=1;
+  let position=initialPosition(),environment='',identity=null,active=false,last=0,raf=0,scale=1,camera=null,anchor=null,viewport=1920,offsetY=0,previousWidth=0,previousHeight=0;
   const keys=new Set(),planes=[...layers.querySelectorAll('[data-parallax]')];
   const controls={KeyA:[-1,0],KeyD:[1,0],KeyW:[0,-1],KeyS:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};
   const blocked=()=>document.hidden||Boolean(document.querySelector('dialog[open]'));
   function draw(){
     if(environment!=='bridge')return;
-    const camera=cameraFor(position.x),reduced=document.body.classList.contains('reduce-motion')||matchMedia('(prefers-reduced-motion: reduce)').matches;
-    for(const plane of planes){const layout=layerLayout(camera,reduced?1:Number(plane.dataset.parallax));plane.style.width=`${layout.width*scale}px`;plane.style.transform=`translateX(${layout.x*scale}px)`;}
-    avatar.style.left=`${(position.x-camera)*scale}px`;avatar.style.top=`${position.y*scale}px`;
+    camera=cameraFor(position.x,camera??position.x-viewport/2,viewport);anchor??=camera;
+    const reduced=document.body.classList.contains('reduce-motion')||matchMedia('(prefers-reduced-motion: reduce)').matches;
+    for(const plane of planes){const layout=layerLayout(camera,reduced?1:Number(plane.dataset.parallax),anchor,viewport);plane.style.width=`${layout.width*scale}px`;plane.style.height=`${WORLD.height*scale}px`;plane.style.transform=`translate(${layout.x*scale}px,${offsetY}px)`;}
+    avatar.style.left=`${(position.x-camera)*scale}px`;avatar.style.top=`${position.y*scale+offsetY}px`;
     frame.dataset.x=String(position.x);frame.dataset.y=String(position.y);frame.dataset.camera=String(camera);
   }
   function resize(){
-    const width=Math.min(home.clientWidth,home.clientHeight*16/9),height=width*9/16;
-    scale=width/WORLD.viewport;frame.style.width=`${width}px`;frame.style.height=`${height}px`;
+    const width=home.clientWidth,height=home.clientHeight;
+    scale=Math.max(width/WORLD.viewport,height/WORLD.height);viewport=width/scale;offsetY=(height-WORLD.height*scale)/2;
+    if(width!==previousWidth||height!==previousHeight){camera=clamp(position.x-viewport/2,0,WORLD.width-viewport);anchor=camera;}
+    previousWidth=width;previousHeight=height;
+    frame.style.width=`${width}px`;frame.style.height=`${height}px`;
     // Character height is in scene coordinates; feet stay anchored to the bounds.
     avatar.style.setProperty('--world-avatar-height',`${250*scale}px`);draw();
   }
@@ -56,11 +63,10 @@ export function createHomeWorld({home,avatar,frame,layers,hint}){
     setEnvironment(value,id){
       const changed=value!==environment||id!==identity;environment=value;identity=id;
       const bridge=value==='bridge';home.classList.toggle('bridge-world',bridge);frame.classList.toggle('hidden',!bridge);
-      document.getElementById('home-menu-toggle').classList.toggle('hidden',!bridge);
       hint.classList.toggle('hidden',!bridge||!identity);
       if(bridge&&avatar.parentElement!==frame)frame.append(avatar);
       if(!bridge&&avatar.parentElement!==home){home.append(avatar);avatar.style.removeProperty('left');avatar.style.removeProperty('top');}
-      if(changed){position=initialPosition();activate(document.body.dataset.screen==='home');}
+      if(changed){position=initialPosition();camera=null;anchor=null;activate(document.body.dataset.screen==='home');}
       resize();
     },
     setActive:activate
