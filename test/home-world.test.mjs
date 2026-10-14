@@ -35,9 +35,11 @@ test('world module, styles and all five PNGs are served through the game server'
     for(const file of ['home-world.mjs','home-world.css']){
       const response=await fetch(`${base}/${file}`);assert.equal(response.status,200);assert.ok((await response.text()).length>0);
     }
-    for(const name of ['background-far','background-close','focus','foreground','poker']){
-      const response=await fetch(`${base}/assets/level-0/${name}.png`);assert.equal(response.status,200);assert.match(response.headers.get('content-type'),/^image\/png/);
+    for(const level of [0,1])for(const name of ['background-far','background-close','focus','foreground','poker']){
+      const response=await fetch(`${base}/assets/level-${level}/${name}.png`);assert.equal(response.status,200);assert.match(response.headers.get('content-type'),/^image\/png/);
       const bytes=new Uint8Array(await response.arrayBuffer());assert.deepEqual([...bytes.slice(0,8)],[137,80,78,71,13,10,26,10]);
+      const header=new DataView(bytes.buffer);assert.equal(header.getUint32(16),name==='poker'?1920:3840);assert.equal(header.getUint32(20),1080);
+      if(name!=='poker')assert.equal(bytes[25],6,'RGBA layer must retain its alpha channel');
     }
   }finally{server.closeAllConnections();await new Promise(r=>server.close(r));}
 });

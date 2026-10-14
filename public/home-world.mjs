@@ -1,5 +1,6 @@
 export const WORLD = Object.freeze({ width:3840, height:1080, viewport:1920, speed:430,
   bounds:Object.freeze({left:384,right:3456,top:648,bottom:972}) });
+export const HOME_ASSETS=Object.freeze({bridge:'level-0',rental:'level-1'});
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
 export function initialPosition(){return {x:2688,y:842.4};}
 export function movePosition(position,dx,dy,seconds){
@@ -23,7 +24,7 @@ export function createHomeWorld({home,avatar,frame,layers,hint}){
   const controls={KeyA:[-1,0],KeyD:[1,0],KeyW:[0,-1],KeyS:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]};
   const blocked=()=>document.hidden||Boolean(document.querySelector('dialog[open]'));
   function draw(){
-    if(environment!=='bridge')return;
+    if(!HOME_ASSETS[environment])return;
     camera=cameraFor(position.x,camera??position.x-viewport/2,viewport);anchor??=camera;
     const reduced=document.body.classList.contains('reduce-motion')||matchMedia('(prefers-reduced-motion: reduce)').matches;
     for(const plane of planes){const layout=layerLayout(camera,reduced?1:Number(plane.dataset.parallax),anchor,viewport);plane.style.width=`${layout.width*scale}px`;plane.style.height=`${WORLD.height*scale}px`;plane.style.transform=`translate(${layout.x*scale}px,${offsetY}px)`;}
@@ -49,7 +50,7 @@ export function createHomeWorld({home,avatar,frame,layers,hint}){
     avatar.classList.toggle('walking',Boolean(dx||dy));draw();raf=requestAnimationFrame(tick);
   }
   function activate(value){
-    active=Boolean(value&&environment==='bridge'&&identity);clear();cancelAnimationFrame(raf);avatar.classList.remove('walking');
+    active=Boolean(value&&HOME_ASSETS[environment]&&identity);clear();cancelAnimationFrame(raf);avatar.classList.remove('walking');
     if(active)raf=requestAnimationFrame(tick);
   }
   document.addEventListener('keydown',event=>{
@@ -62,10 +63,11 @@ export function createHomeWorld({home,avatar,frame,layers,hint}){
   return {
     setEnvironment(value,id){
       const changed=value!==environment||id!==identity;environment=value;identity=id;
-      const bridge=value==='bridge';home.classList.toggle('bridge-world',bridge);frame.classList.toggle('hidden',!bridge);
-      hint.classList.toggle('hidden',!bridge||!identity);
-      if(bridge&&avatar.parentElement!==frame)frame.append(avatar);
-      if(!bridge&&avatar.parentElement!==home){home.append(avatar);avatar.style.removeProperty('left');avatar.style.removeProperty('top');}
+      const layered=Boolean(HOME_ASSETS[value]);home.classList.toggle('layered-world',layered);frame.classList.toggle('hidden',!layered);
+      if(layered)for(const plane of planes){const name=plane.dataset.plane==='far'?'background-far':plane.dataset.plane==='close'?'background-close':plane.dataset.plane;const src=`/assets/${HOME_ASSETS[value]}/${name}.png`;if(plane.getAttribute('src')!==src)plane.src=src;}
+      hint.classList.toggle('hidden',!layered||!identity);
+      if(layered&&avatar.parentElement!==frame)frame.append(avatar);
+      if(!layered&&avatar.parentElement!==home){home.append(avatar);avatar.style.removeProperty('left');avatar.style.removeProperty('top');}
       if(changed){position=initialPosition();camera=null;anchor=null;activate(document.body.dataset.screen==='home');}
       resize();
     },

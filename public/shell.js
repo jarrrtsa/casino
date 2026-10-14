@@ -1,6 +1,6 @@
 const $ = id => document.getElementById(id);
 const SETTINGS_KEY = 'casino-settings-v1';
-import { createHomeWorld } from './home-world.mjs';
+import { createHomeWorld, HOME_ASSETS } from './home-world.mjs';
 function stored(key) { try { return JSON.parse(localStorage.getItem(key)); } catch { return null; } }
 function remember(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* The current session remains usable when storage is unavailable. */ } }
 
@@ -113,7 +113,7 @@ export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer
       $('entry').close(); showScreen('table'); $('lobby').classList.remove('hidden');
       const environment=['bridge','rental','loft','mansion'].includes(room.environment)?room.environment:'bridge';
       const asset=environment==='rental'?'home':environment;
-      $('table-scene').src=environment==='bridge'?'/assets/level-0/poker.png':`/assets/table-${asset}.svg`;
+      $('table-scene').src=HOME_ASSETS[environment]?`/assets/${HOME_ASSETS[environment]}/poker.png`:`/assets/table-${asset}.svg`;
       document.body.dataset.tableEnvironment=environment;
       const location={bridge:'Under the bridge',rental:'Rental apartment',loft:'City loft',mansion:'Hillside residence'}[environment];
       $('room-location').textContent=location;$('table-location').textContent=`${location.toUpperCase()} · ${room.singleplayer?'NPC':'ONLINE'} HOLD’EM · $5 / $10`;

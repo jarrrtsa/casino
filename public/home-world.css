@@ -5,19 +5,19 @@
 .world-layer[data-plane="close"] { z-index:1; }
 .world-layer[data-plane="focus"] { z-index:2; }
 .world-layer[data-plane="foreground"] { z-index:4; }
-.bridge-world > .home-scene { display:none; }
-.bridge-world .home-character { z-index:3;bottom:auto;transform:translate(-50%,-100%);pointer-events:none; }
-.bridge-world .home-character svg { height:var(--world-avatar-height);width:calc(var(--world-avatar-height) / 2); }
-.bridge-world .home-character span { position:absolute;top:100%;white-space:nowrap;padding:3px 8px; }
+.layered-world > .home-scene { display:none; }
+.layered-world .home-character { z-index:3;bottom:auto;transform:translate(-50%,-100%);pointer-events:none; }
+.layered-world .home-character svg { height:var(--world-avatar-height);width:calc(var(--world-avatar-height) / 2); }
+.layered-world .home-character span { position:absolute;top:100%;white-space:nowrap;padding:3px 8px; }
 .home-menu { z-index:6; }
-.bridge-world .home-menu { position:absolute;right:0;top:0;bottom:0;width:min(420px,95vw);height:100%;min-height:100%;box-sizing:border-box;overflow-y:auto;padding:65px 28px 24px 72px;border-left:1px solid #a6bac04d;background:linear-gradient(90deg,#101a29b8,#101a29f2 12%,#101a29fa);transform:translateX(calc(100% - 18px));transition:transform .22s ease; }
-.bridge-world .home-menu > * { visibility:hidden; }
-.bridge-world .home-menu:hover,.bridge-world .home-menu:focus-within { transform:translateX(0); }
-.bridge-world .home-menu:hover > *,.bridge-world .home-menu:focus-within > * { visibility:visible; }
+.layered-world .home-menu { position:absolute;right:0;top:0;bottom:0;width:min(420px,95vw);height:100%;min-height:100%;box-sizing:border-box;overflow-y:auto;padding:65px 28px 24px 72px;border-left:1px solid #a6bac04d;background:linear-gradient(90deg,#101a29b8,#101a29f2 12%,#101a29fa);transform:translateX(calc(100% - 18px));transition:transform .22s ease; }
+.layered-world .home-menu > * { visibility:hidden; }
+.layered-world .home-menu:hover,.layered-world .home-menu:focus-within { transform:translateX(0); }
+.layered-world .home-menu:hover > *,.layered-world .home-menu:focus-within > * { visibility:visible; }
 .topbar,body:has(main.in-room) .topbar { height:52px;min-height:0;padding:0 22px;background:linear-gradient(#111b2980,transparent);pointer-events:none; }
 .topbar a,.topbar button { pointer-events:auto; }
-@media(hover:none) { .bridge-world .home-menu { transform:translateX(calc(100% - 44px)); } }
+@media(hover:none) { .layered-world .home-menu { transform:translateX(calc(100% - 44px)); } }
 .world-controls { position:absolute;left:22px;bottom:18px;z-index:7;color:#e8dccd;font-size:11px;background:#152136bd;padding:8px 12px;border-radius:4px;pointer-events:none; }
-body[data-table-environment="bridge"] .room-scene { object-fit:fill; }
-body[data-table-environment="bridge"] .table-center { top:55%; }
-body[data-table-environment="bridge"] .dealer-layer { display:none; }
+body:is([data-table-environment="bridge"],[data-table-environment="rental"]) .room-scene { object-fit:fill; }
+body:is([data-table-environment="bridge"],[data-table-environment="rental"]) .table-center { top:55%; }
+body:is([data-table-environment="bridge"],[data-table-environment="rental"]) .dealer-layer { display:none; }

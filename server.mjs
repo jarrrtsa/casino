@@ -14,7 +14,7 @@ publicFiles.set('/character.js',['character.js','text/javascript']);
 publicFiles.set('/rpg.css',['rpg.css','text/css']);
 publicFiles.set('/home-world.mjs',['home-world.mjs','text/javascript']);
 publicFiles.set('/home-world.css',['home-world.css','text/css']);
-for(const name of ['background-far','background-close','focus','foreground','poker'])publicFiles.set(`/assets/level-0/${name}.png`,[`assets/level-0/${name}.png`,'image/png']);
+for(const level of [0,1])for(const name of ['background-far','background-close','focus','foreground','poker'])publicFiles.set(`/assets/level-${level}/${name}.png`,[`assets/level-${level}/${name}.png`,'image/png']);
 export function createServer(options = {}) {
 const economy = createEconomy(options.dbPath || ':memory:', options.now || Date.now);
 const jobs = new Map();
