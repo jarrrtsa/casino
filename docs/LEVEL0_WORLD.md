@@ -38,3 +38,9 @@ Kaikki layerit käyttävät samaa 3840 × 1080 -renderöintikokoa ja samaa läht
 Yläpalkki on 52 px ja läpinäkyvä. Kotivalikko vetäytyy oikealle jättäen 18 px reunan; hiiren vieminen reunaan tai näppäimistöfokus tuo sen esiin. Tausta ja vieritys kattavat koko valikon korkeuden. Hide menu -painike poistettiin. Kosketuslaitteelle jää 44 px reunakaista.
 
 56 testiä läpäisee. Oikea selain varmisti yhtenäiset layerleveydet, liikkumisen ilman välitöntä kameraseurantaa, seuraamisen reunan lähellä, 1040 × 888 fullscreen-näkymän ilman tyhjää ylä-/alapalkkia, 52 px headerin sekä koko korkeuden reunavalikon. JavaScript-virheitä ei ollut.
+
+## Korjatut lopulliset lähdekuvat
+
+Aiempi integraatio käytti virheellisesti four-layers/level-0-luonnoksia. Ne korvattiin käyttäjän muuttamattomilla 3840 × 1080 -loppuversioilla approved/level-0/user-final-kansiosta: layer1 → background-far, layer2 → background-close, layer3 → focus, layer4 → foreground, LVL0_poker → poker. Kaikkien viiden kopion SHA-256 vastaa lähdetiedostoa. Tämä osio korvaa yllä olevan luonnosten lähdekuvauksen. Myös selain varmisti neljän layerin alkuperäiset 3840 × 1080 mitat.
+
+Reunavalikko on koko ruudun korkuinen ja enintään 420 px levyinen. Sisältö alkaa 72 px sisennyksellä lähes peittävän tumman taustan päällä. Piilossa näkyy 18 px taustakaista ja reunaviiva, kaikki sisältö on visibility:hidden. Hover tai navin näppäimistöfokus avaa sen. Selain varmisti tekstittömän piilotilan, koko korkeuden ja avautumisen ilman JavaScript-virheitä.
