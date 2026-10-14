@@ -76,3 +76,9 @@ Valmistumisjärjestys: sillan alusmaailma ja sen hyväksytyt layerit → saman s
 ## Käyttäjän uusi integraatiolupa 14.10.2026
 
 Lvl 0:n neljä layeria (far, close, focus, foreground) ja pokerinäkymä ovat käyttäjän hyväksymiä kokeiltavaksi pelissä. Chat A saa integroida tämän paketin ja tehdä WASD:n, vaakavierityksen ja parallaxin. Liikealueen jalkapiste: koko maailman x 10–90 %, kuvan y 60–90 %. Tämä korvaa vanhan integraatiokiellon vain lvl 0:n osalta. Chat C jatkaa lvl 1:n valmistelua ja myöhemmin uusia hahmoja edelleen irrallisina assetteina; niitä ei oteta peliin ilman seuraavaa käyttäjän lupaa. Lvl 0:n toteutus ja testit kuvataan docs/LEVEL0_WORLD.md:ssä.
+
+## Vaihe 4: hahmot, animaatiot ja ääni
+
+Chat C:n valmistelualue kattaa nyt myös hahmodesignin, modulaariset vaatteet/hiukset, ilmeet, NPC:t, sprite-animaatiot, ympäristöefektit ja audion. Käyttäjä valitsee seuraavan assetin ja paketin. Sama yhden assetin hyväksyntäkierto säilyy. Perushahmo ja sen mittakaava/perspektiivi/jalkapiste kannattaa lukita ennen siihen kohdistettavia osia. Säilytä alpha ja kirjaa yhteinen canvas, ankkuri, mahdollinen hitbox-suositus sekä animaation frame-jako, fps, loop ja suunta. Äänet hyväksytään kuuntelemalla, tiedoston tekniset tiedot ja loop kirjataan.
+
+Aiemmat lvl 0/1 hyväksytyt loppukuvat on jo integroitu käyttäjän pyynnöstä. Niiden lähdetiedostoja ei korvata tai muuteta huomaamatta. Uudet assetit ja revisiot pysyvät stagingissa, kunnes sovittu paketti on hyväksytty ja käyttäjä pyytää integraatiota. Chat C ei muuta pelin lähdekoodia eikä pushaa tai deployaa.

@@ -136,3 +136,45 @@ Chat A: käyttäjäpalautteen jälkeen lvl 0:n layerit kohdistettu samaan kokoon
 Chat A: lvl 0:n väärät luonnoslähteet korvattu approved/level-0/user-final-kansion käyttäjän skaalaamilla loppukuvilla; kaikkien viiden kopion hash tarkistettu. Kotivalikon koko tausta tummennettu ja piilossa näkyy vain tekstittömän taustan reunakaista. Varmennettu selaimessa.
 Chat A: käyttäjä hyväksyi LVL_1-handoffin integraation, omistus frontend/world/static-reitit ja testit. Designin lvl 1 kytketään nykyiseen rental-asumistasoon; talouden tai XP:n rajoja ei muuteta. Alpha ja lvl 0:n pokeriankkurit säilyvät. Ei audioa, animaatioita, pushia tai deployta.
 Chat A: LVL_1-handoff integroitu rental-asumistasoon. Kuvat kopioitu muuttamattomina hash-varmennuksella. Kävely/world ja pokeriankkurit yhteiset lvl 0:n kanssa. Ikkunan taustat ja kamerareunat katsottu, NPC/private-taustat sekä identtiset pokeriankkurit varmennettu selaimessa; 56/56 testiä läpäisee. Raportti docs/LEVEL1_WORLD.md. Ei animaatioita, audioa, pushia tai deployta.
+
+# Vaihe 4 – aktiivinen työnjako, 14.10.2026
+
+Tämä osio korvaa aiempien vaiheiden aktiiviset vastuut. Tekninen lähtöcommit 5de27c8: palautus, NPC:t ja hyväksytyt lvl 0/1 ympäristöt yhdistetty; 56 testiä läpäisee. C:n aktiivista assetti-worktreetä ei resetöidä tai päivitetä koodihaaraan.
+
+## Chat A – kodin sosiaalinen lobby, palvelin
+
+Työkansio: C:\Users\Teemu\Documents\ChatGPT\CASINO ROYALE
+Haara: codex/home-lobby
+
+Tavoite: erottaa maksuton kaverien kotivierailu pokeripöydän buy-inistä. Toteuta lisäominaisuus nykyisten pokerireittien rinnalle. Hahmo voi luoda kodin lobbyn tai liittyä siihen ilman saldo-/velka-/XP-muutosta. Kotiympäristö valitaan hostin hahmosta. Lobbyyn kuuluu host, kutsukoodi ja jäsenlista; yksi kotilobby/hahmo, rajattu jäsenmäärä, hostin siirto ja poistuminen määritellään. Ei vielä maailman liikkeen synkronointia tai kasinoa. Palautuksen ja hahmon poiston vaikutus kotilobbyjäsenyyteen käsitellään. Pöydät ja rahavarausten logiikka toimivat kuten aiemmin.
+
+Omistus: server.mjs, uusi home-lobby.mjs ja mahdolliset home-lobby-*.mjs, test/home-lobby*.test.mjs, docs/HOME_LOBBY.md. Älä muuta B:n world-moduuleja, CSS:ää, kuvia tai audioa. API on uusi /api/home/*-kokonaisuus, hahmo autentikoidaan nykyisellä käyttöavaimella. Kirjaa tarkka sopimus omaan raporttiin ennen frontend-integraatiota. Ei kodin ja pokerin UI-siirtymien rakentamista samanaikaisesti B:n world-työn kanssa.
+
+Valmis kun: saldo ei muutu vierailusta, vieraan ympäristö määräytyy hostista, luvattomat liittymis-/host-toiminnot estetään, jäsenmäärä/yksi jäsenyys/poistuminen/hostin siirto sekä hahmon palautus/poisto testataan, ja nykyinen pokeri läpäisee testit. Tämä on palvelinpohja; kodin lobbyn näkyvä käyttöliittymä on seuraava integraatiovaihe.
+
+## Chat B – kodin liikkumisalueet ja vuorovaikutuspohja
+
+Työkansio: C:\Users\Teemu\.codex\worktrees\npc-gameplay\CASINO ROYALE
+Haara: codex/world-interactions
+Pohja: 5de27c8. Aloita käyttäjän promptista.
+
+Tavoite: lisätä lvl 0/1 kotimaailmoihin datavetoinen este- ja vuorovaikutusmalli. Säilytä maailman 3840x1080, jalkapisteen x 10–90 %, y 60–90 %, kameran 20–80 % liikkumavara, vain vaakaparallax ja hyväksytyt lähdekuvat. Esteet perustuvat jalkapisteen kulkuun lattialla, eivät koko esineen kuvasiluettiin. Valitse varovaiset estealueet teltan/pöydän/tavaroiden ympärille, varmista spawn ja reitti maailman puolten välillä. Tarvittaessa dokumentoi esteiden alustavuus eikä sulje koko käytävää.
+
+Lisää pokeripöydän ja läppärin lähestymisalueet sekä E-toiminnon pohja. Tuota vain paikallinen CustomEvent 'home-interact', detail { target: 'poker' | 'computer', environment: 'bridge' | 'rental' }. Älä kutsu uusia /api/home/*-reittejä tai aloita peliä automaattisesti. Chat A kytkee tapahtuman myöhemmin olemassa oleviin dialogeihin. Saman painalluksen autorepeat ei saa lähettää useita tapahtumia. Avoin dialogi, piilotettu koti, lomakefokus ja fokuskatkos estävät liikkumisen/vuorovaikutuksen. Ei multiplayer-liikesynkronointia.
+
+Omistus: public/home-world.mjs, public/home-world.css (vain vihjeen nykyiseen tyyliin sopiva toiminnallinen muutos), uusi public/world-layout.mjs, test/home-world.test.mjs, test/world-layout*.test.mjs, docs/WORLD_INTERACTIONS.md. Älä muuta shell.js:ää, app.js:ää, character.js:ää, index.html:ää, server.mjs:ää, taloutta tai assetteja. Käytä olemassa olevaa world-controls-elementtiä E-vihjeeseen. Uuden world-layout.mjs-moduulin static-route on Chat A:n lisättävä integraatiossa: kirjaa tarve raporttiin. Selainkokeessa voit käyttää omaa tilapäistä testipalvelinta, joka tarjoaa moduulin, ilman server.mjs-muutosta.
+
+Valmis kun: diagonaaliliike ei kiihdy, iso frame-aika ei läpäise estettä, hahmo ei jää esteeseen, reunat sekä törmäyksen reunaa pitkin liukuminen toimivat ja kotikuvan molemmat puolet ovat saavutettavissa. Vuorovaikutus toimii vain alueella ja oikeassa tilassa. Testaa esteet ja E-toiminnon ehdot, dokumentoi rajat ja tee rajatut commitit. Ei design-uudistusta tai hahmoanimaatiota.
+
+## Chat C – hahmot, grafiikat, animaatiot ja audio
+
+Työkansio: C:\Users\Teemu\.codex\worktrees\visual-audio-assets\CASINO ROYALE
+Haara: codex/visual-audio-assets (säilytä nykyinen työ).
+
+Käyttäjä voi jatkaa C:n kanssa hahmodesignia, vaatetus-/hiusosia, ilmeitä, NPC-hahmoja, ympäristöjä, animaatioita, tehosteita ja ääniä haluamassaan järjestyksessä. Ensimmäiseksi voi valita perushahmon. Lue kanoninen DESIGN_ASSET_WORKFLOW.md sekä käyttäjän viimeisimmät päätökset. Yksi assetti kerrallaan esikatsellaan, korjataan ja hyväksytään. Hahmolle sovitaan mittakaava, perspektiivi, läpinäkyvyys ja jalkojen ankkuri; vaatteiden/hiusten osat kohdistetaan yhteiseen runkoon. Animaatioille sovitaan idle/walk/sit ja suuntien tarve ennen ruutujen tekemistä. Still, animaatiobriefi tai äänibriefi ei ole valmis animaatio/ääni.
+
+Omistus: oman worktreen design-staging/ ja docs/DESIGN_ASSETS.md. Älä muuta public/, koodia, taloutta, asetuksia tai aiemmin luovutettuja hyväksyttyjä tiedostoja. Uudet revisiot omilla versionimillä. Luovuta sovittu hyväksytty kokonaisuus handoff-kansiossa PNG/SVG/spritesheet/äänitiedostoineen ja HANDOFF.md-, manifesti- ja hash-tietoineen. Käyttäjän skaalaamat/loppukuvat ovat ensisijaiset: luonnoksia ei toimiteta niiden sijaan. Säilytä alpha. Integraatio tehdään käyttäjän pyynnöstä Chat A:ssa, ei automaattisesti C:n valmistelun aikana.
+
+## Yhteiset rajat
+
+Jokainen lukee aktiivisen Vaihe 4:n kanonisesta pääkansiosta. B:n tekninen työkopio päivitetään yhteiseen pohjaan; C:n aktiiviset assetit säilytetään ennallaan. Ei samanaikaisia muutoksia toisen omistamiin tiedostoihin. Omat raportit sisältävät commitit, testit, rajat ja integraatiotarpeet. Chat A yhdistää tekniset osuudet vasta niiden valmistuttua ja lisää tarvittavat static-reitit. Ei pushia tai deployta. Ei uusia kasinopelejä, progression muutoksia tai assettien käyttöönottoa tämän teknisen työn sivutuotteena.
