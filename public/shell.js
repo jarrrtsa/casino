@@ -6,6 +6,58 @@ function stored(key) { try { return JSON.parse(localStorage.getItem(key)); } cat
 function remember(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* The current session remains usable when storage is unavailable. */ } }
 
 export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer, onHomePoker, onIdentityChange }) {
+  const clockFormat = new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit',hour12:false});
+  const dateFormat = new Intl.DateTimeFormat('en-GB',{weekday:'short',day:'numeric',month:'short'});
+  function updateClock(){const now=new Date();$('phone-clock').textContent=clockFormat.format(now);$('phone-clock').dateTime=now.toISOString();$('phone-date').textContent=dateFormat.format(now);}
+  updateClock();
+  setInterval(updateClock,1000);
+  document.addEventListener('visibilitychange',()=>{document.body.classList.toggle('effects-paused',document.hidden);if(!document.hidden)updateClock();});
+  const phone=$('home-navigation');
+  document.addEventListener('pointermove',event=>{
+    if(event.pointerType==='touch')return;
+    const bounds=phone.getBoundingClientRect();
+    phone.classList.toggle('phone-hover',document.body.dataset.screen==='home'&&event.clientY>=bounds.top&&event.clientY<=bounds.bottom&&event.clientX>=Math.min(bounds.left,innerWidth-24));
+  });
+  document.addEventListener('pointerout',event=>{if(!event.relatedTarget)phone.classList.remove('phone-hover');});
+
+  const phoneScreens=['home-social-dialog','character-modal','bank-dialog','job-dialog','settings','recovery-key-dialog','recovery-dialog','delete-dialog'];
+  const dismissedPhoneScreens=new WeakSet();
+  function positionPhoneApps(){
+    const bounds=phone.getBoundingClientRect();
+    for(const id of phoneScreens){const screen=$(id);if(!screen.classList.contains('phone-app-screen'))continue;
+      screen.style.setProperty('--app-left',`${bounds.left+5}px`);
+      screen.style.setProperty('--app-top',`${bounds.top+60}px`);
+      screen.style.setProperty('--app-width',`${bounds.width-10}px`);
+      screen.style.setProperty('--app-height',`${Math.max(100,bounds.height-88)}px`);
+    }
+  }
+  for(const id of phoneScreens){
+    const screen=$(id),showModal=screen.showModal.bind(screen);
+    const close=screen.querySelector('[data-close]');
+    if(close){close.textContent='‹ Back';close.classList.add('phone-back');}
+    screen.showModal=()=>{
+      const inPhone=document.body.dataset.screen==='home';
+      screen.classList.toggle('phone-app-screen',inPhone);
+      if(inPhone){phone.classList.add('phone-app-open');positionPhoneApps();}
+      showModal();
+    };
+    screen.addEventListener('click',event=>{
+      if(!screen.classList.contains('phone-app-screen')||event.target!==screen)return;
+      const bounds=phone.getBoundingClientRect();
+      if(event.clientX>=bounds.left&&event.clientX<=bounds.right&&event.clientY>=bounds.top&&event.clientY<=bounds.bottom)return;
+      for(const key of [...phoneScreens].reverse()){
+        const page=$(key);
+        if(page.open&&page.classList.contains('phone-app-screen')){dismissedPhoneScreens.add(page);page.close();}
+      }
+      phone.classList.remove('phone-app-open');
+      if(phone.contains(document.activeElement))document.activeElement.blur();
+    });
+    screen.addEventListener('close',()=>{
+      const dismissed=dismissedPhoneScreens.delete(screen);
+      if(!phoneScreens.some(key=>$(key).open&&$(key).classList.contains('phone-app-screen'))){phone.classList.remove('phone-app-open');if(dismissed){if(phone.contains(document.activeElement))document.activeElement.blur();}else if(document.body.dataset.screen==='home')phone.focus({preventScroll:true});}
+    });
+  }
+  window.addEventListener('resize',positionPhoneApps);
   let profile = null;
   const preferences = stored(SETTINGS_KEY) || {};
   let lobbyOpen = false;
@@ -21,13 +73,13 @@ export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer
     $('name').readOnly = Boolean(profile);
     for(const id of ['home-wallet','home-progression'])$(id).classList.toggle('hidden',!profile);
     if(profile){
-      $('home-cash').textContent=`$${profile.cash.toLocaleString('en-US')}`;$('home-debt').textContent=`$${profile.debt.toLocaleString('en-US')}`;
+      $('home-cash').textContent=`$${profile.cash.toLocaleString('en-US')}`;
       $('home-level').textContent=`Level ${profile.level}`;$('home-xp').textContent=`${profile.xpInLevel} / 100 XP`;$('xp-progress').value=profile.xpInLevel;
       $('next-home').textContent=profile.nextHome?`Next home: ${profile.nextHome.name} · Level ${profile.nextHome.level} · $${profile.nextHome.wealth.toLocaleString('en-US')} net worth`:'';
       $('home-location').textContent=profile.home.name.toUpperCase();$('home-scene').src=`/assets/${profile.home.asset}`;
       $('home-scene').alt=`${profile.home.name}, your character’s home.`;
       character.portrait($('home-avatar'));document.body.dataset.home=profile.home.id;
-    }else{$('home-location').textContent='UNDER THE BRIDGE';$('home-scene').src='/assets/bridge.svg';$('home-avatar').querySelector('use').setAttribute('href','/assets/characters.svg#hoodie');$('home-avatar').style.color='#5c7e96';document.body.dataset.home='bridge';}
+    }else{$('home-location').textContent='UNDER THE BRIDGE';$('home-scene').src='/assets/bridge.svg';character.portrait($('home-avatar'),{});document.body.dataset.home='bridge';}
     const visited=social?.home?.environment;
     if(visited){
       const homeNames={bridge:'Under the bridge',rental:'Rental apartment',loft:'City loft',mansion:'Hillside residence'};
@@ -77,9 +129,7 @@ export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer
     $('pause-help').textContent = $('leave').disabled ? 'Return home when your hand is over. The turn timer continues.' : 'Your remaining chips return to your wallet when you leave.';
     $('pause-menu').showModal();
   }
-  $('singleplayer').onclick = () => ensureProfile('casino');
-  $('multiplayer').onclick = () => ensureProfile('entry');
-  $('home-social-open').onclick=()=>openHome();
+  $('multiplayer').onclick=()=>openHome();
   $('home').addEventListener('home-interact',event=>{
     if(document.body.dataset.screen!=='home'||document.querySelector('dialog[open]'))return;
     if(event.detail?.target==='poker'){
@@ -102,7 +152,6 @@ export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer
   $('lobby-toggle').onclick = () => setLobby(!lobbyOpen);
   $('lobby-close').onclick = () => setLobby(false);
   $('quick-ready').onclick = () => $('ready').click();
-  $('quick-start').onclick = () => $('start').click();
   $('setting-sound').onchange = async () => { await onSound($('setting-sound').checked); };
   function applyGraphics() {
     document.body.classList.toggle('reduce-motion', Boolean(preferences.motion));
@@ -125,7 +174,7 @@ export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer
   function renderHome(home){
     if(!home||presenceState?.homeId!==home.id){presenceEpoch++;presenceState=null;world.clearPresence();}
     $('home-empty').classList.toggle('hidden',Boolean(home));$('home-membership').classList.toggle('hidden',!home);
-    $('home-social-open').querySelector('small').textContent=home?`${home.players.length} / ${home.capacity} friends · ${home.code}`:'Free visits with friends';
+    $('multiplayer-status').textContent=home?`${home.players.length} / ${home.capacity} friends · ${home.code}`:'Host or join friends';
     $('home-roster').replaceChildren();$('home-host-target').replaceChildren();
     if(!home){$('home-code').textContent='';$('home-invite-url').value='';$('home-invite-result').classList.add('hidden');$('home-copy-status').textContent='';}
     if(home){
@@ -220,7 +269,7 @@ export function createShell({ getRoom, onLeave, onSound, onError, onSingleplayer
       if (previous?.code !== room.code) setLobby(!room.hand || room.hand.stage === 'finished');
       else if (room.hand && room.hand.stage !== 'finished' && (!previous.hand || previous.hand.stage === 'finished')) setLobby(false);
       $('room-summary').textContent = room.singleplayer ? `NPC table · ${room.players.length} players` : `${room.code} · ${room.players.length}/6`;
-      for (const [id, source] of [['quick-ready', 'ready'], ['quick-start', 'start']]) {
+      for (const [id, source] of [['quick-ready', 'ready']]) {
         $(id).textContent = $(source).textContent; $(id).disabled = $(source).disabled; $(id).classList.toggle('hidden', $(source).classList.contains('hidden'));
       }
       const playing = room.hand && room.hand.stage !== 'finished';

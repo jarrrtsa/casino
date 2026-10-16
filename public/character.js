@@ -1,3 +1,5 @@
+import {drawCharacter,characterParts} from './character-renderer.mjs';
+import {normalizeAppearance,ownedParts,cosmeticCatalog,PART_NAMES} from './appearance.mjs';
 const KEY = 'casino-identity-v1';
 const ACCESS_WARNING = 'Character access could not be saved in this browser. Keep this tab open and keep your recovery key safe before closing it.';
 const stale = () => Object.assign(new Error('Outdated character response.'), { stale: true });
@@ -116,7 +118,6 @@ export async function copyRecoveryKey(key, { writeText, select, onStatus, isCurr
 
 const $=id=>document.getElementById(id);
 
-const COLORS={blue:'#5c7e96',amber:'#b59778',plum:'#987d96',sage:'#829c91'};
 const money=n=>`${n<0?'−':''}$${Math.abs(n).toLocaleString('en-US')}`;
 
 export function createCharacterManager({onChange,onError,onSingleplayer,onIdentityChange=()=>{},hasTable=()=>false}) {
@@ -128,27 +129,43 @@ export function createCharacterManager({onChange,onError,onSingleplayer,onIdenti
   const api=(path,data)=>client.request(path,data);
   const update=c=>client.update(c);
   async function refresh(){try{return await client.refresh();}catch(error){if(!error.stale)onError(error.message);}}  async function task(fn){if(busy)return;busy=true;document.querySelectorAll('.dialog-error').forEach(e=>e.remove());document.querySelectorAll('.character-action').forEach(b=>b.disabled=true);try{await fn();}catch(error){if(error.stale)return;const dialog=[...document.querySelectorAll('dialog[open]')].at(-1);if(dialog){const notice=document.createElement('p');notice.className='dialog-error';notice.setAttribute('role','alert');notice.textContent=error.message;dialog.append(notice);}else onError(error.message);}finally{busy=false;document.querySelectorAll('.character-action').forEach(b=>b.disabled=false);if(profile)renderBank();}}
-  function portrait(element,outfit=profile?.outfit||'hoodie',color=profile?.color||'blue'){element.querySelector('use').setAttribute('href',`/assets/characters.svg#${outfit}`);element.style.color=COLORS[color]||COLORS.blue;}
+  function portrait(element,selection=profile?.appearance||profile||{},pose='standing'){drawCharacter(element,typeof selection==='object'?selection:{outfit:selection},pose);}
   function renderCharacter(){
     $('character-name').value=profile?.name||client.identity.name||'';
-    $('outfit').replaceChildren(...(profile?.catalog||[{id:'hoodie',name:'Hoodie',level:1,price:0}]).map(item=>{const option=document.createElement('option');option.value=item.id;const owned=profile?.owned.includes(item.id);option.textContent=`${item.name} · ${owned?'Owned':`$${item.price}`} · Level ${item.level}`;option.disabled=Boolean(profile&&profile.level<item.level);return option;}));
-    $('outfit').value=profile?.outfit||'hoodie';$('character-color').value=profile?.color||'blue';
+    const selection=normalizeAppearance(profile?.appearance||profile||{}),owned=new Set(ownedParts(profile||{}));
+    for(const [key,parts] of Object.entries({body:characterParts.bases,top:characterParts.tops,bottom:characterParts.bottoms,head:characterParts.heads,accessory:characterParts.accessories})){
+      $('character-'+key).replaceChildren(...parts.map((part,index)=>{const value=index+(key==='accessory'?0:1),option=document.createElement('option');option.value=String(value);
+        const item=(profile?.cosmeticCatalog||cosmeticCatalog()).find(item=>item.id===`${key}:${value}`),has=owned.has(`${key}:${value}`),free=key==='body';
+        const pending=!has&&!free&&(!item||item.level===null||item.price===null);
+        const unlocked=free||has||(!pending&&(profile?.level||1)>=item.level);
+        option.textContent=`${PART_NAMES[key][index]}${free?'':has?' · Owned':pending?' · Coming later':` · ${unlocked?'Unlocked':'Locked'} · Level ${item.level} · $${item.price}`}`;
+        option.disabled=!unlocked;return option;}));
+      $('character-'+key).value=String(selection[key]);
+    }
+
     $('character-stats').textContent=profile?`Level ${profile.level} · ${profile.xp} XP · ${profile.hands} hands · ${profile.wins} wins`:'New characters start with $1,000. XP and unlocks start at level 1.';
-    $('character-submit').textContent=profile?'Save / purchase outfit':'Create character';
+    $('character-submit').textContent=profile?'Save character':'Create character';
     $('delete-character').classList.toggle('hidden',!profile);$('recovery-key-open').classList.toggle('hidden',!profile);preview();
   }
-  function preview(){portrait($('character-preview'),$('outfit').value,$('character-color').value);}
+  function selectedParts(){return Object.fromEntries(['body','top','bottom','head','accessory'].map(key=>[key,Number($('character-'+key).value)]));}
+  function preview(){
+    const selection=selectedParts();portrait($('character-preview'),selection);
+    const owned=new Set(ownedParts(profile||{}));
+    const price=(profile?.cosmeticCatalog||cosmeticCatalog()).filter(item=>selection[item.slot]===item.value&&!owned.has(item.id)).reduce((sum,item)=>sum+item.price,0);
+    $('character-submit').textContent=price?`Buy & save · $${price}`:profile?'Save character':'Create character';
+  }
   function renderBank(){if(!profile)return;$('bank-cash').textContent=money(profile.cash);$('bank-debt').textContent=money(profile.debt);$('bank-wealth').textContent=money(profile.wealth);$('borrow').disabled=busy||profile.debt>0||profile.cash>100||profile.inTable;$('repay').disabled=busy||!profile.debt||!profile.cash||profile.inTable;$('repayment').max=Math.min(profile.cash,profile.debt);$('repayment').value=Math.min(profile.cash,profile.debt)||'';$('bank-history').replaceChildren(...profile.transactions.map(t=>{const li=document.createElement('li');const label=document.createElement('span');label.textContent=t.kind;const value=document.createElement('strong');value.textContent=t.delta===0?'—':money(t.delta);li.append(label,value);return li;}));}
   function openCharacter(){renderCharacter();$('character-modal').showModal();}
   async function ensure(fn){await ready;if(!profile){afterCreate=fn;openCharacter();return;}fn();}
   $('character-form').onsubmit=e=>{e.preventDefault();void task(async()=>{
     const name=$('character-name').value.trim();if(!name)throw new Error('Enter a character name.');
     const next=afterCreate;
-    if(!profile){const color=$('character-color').value;await client.create(name);if(color!=='blue')update(await api('/api/character/customize',{operation:crypto.randomUUID(),name,outfit:'hoodie',color}));}
-    else update(await api('/api/character/customize',{operation:crypto.randomUUID(),name,outfit:$('outfit').value,color:$('character-color').value}));
+    const appearance=selectedParts();
+    if(!profile)await client.create(name);
+    update(await api('/api/character/customize',{operation:crypto.randomUUID(),name,appearance}));
     $('character-modal').close();afterCreate=null;if(next)next();
   });};
-  $('outfit').onchange=preview;$('character-color').onchange=preview;
+  for(const key of ['body','top','bottom','head','accessory'])$('character-'+key).onchange=preview;
   $('borrow').onclick=()=>void task(async()=>update(await api('/api/wallet/borrow',{operation:crypto.randomUUID()})));
   $('repay-form').onsubmit=e=>{e.preventDefault();void task(async()=>update(await api('/api/wallet/repay',{operation:crypto.randomUUID(),amount:Number($('repayment').value)})));};
   $('npc-start').onclick=()=>void task(async()=>{await onSingleplayer(Number($('npc-buyin').value));if(profile?.inTable)$('singleplayer-dialog').close();});

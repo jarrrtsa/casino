@@ -1,3 +1,4 @@
+import {drawCharacter} from './character-renderer.mjs';
 import { createShell } from './shell.js';
 const $ = id => document.getElementById(id);
 let session;
@@ -8,7 +9,10 @@ let connected = false;
 let clockOffset = 0;
 let raiseKey = '';
 let soundOn = false;
+let animateSnapshot=false;
+const motionAllowed=()=>!document.hidden&&!document.body.classList.contains('reduce-motion')&&!document.body.classList.contains('no-effects')&&!matchMedia('(prefers-reduced-motion: reduce)').matches;
 let audioContext;
+let noiseBuffer;
 const ui = createShell({ getRoom: () => currentRoom, onLeave: () => $('leave').click(), onSound: enabled => setSound(enabled), onError: text => setError(text), onSingleplayer: buyIn => join('/api/singleplayer',buyIn), onHomePoker:buyIn=>join('/api/home/poker',buyIn), onIdentityChange: () => resetSession() });
 const money = value => `$${value.toLocaleString('en-US')}`;
 const stageNames = { preflop: 'Preflop', flop: 'Flop', turn: 'Turn', river: 'River', finished: 'Hand finished' };
@@ -17,11 +21,26 @@ function node(tag, className = '', text = '') { const element = document.createE
 function setError(text = '') { document.querySelectorAll('.dialog-error').forEach(e=>e.remove());const dialog=[...document.querySelectorAll('dialog[open]')].at(-1);if(text&&dialog){const notice=node('p','dialog-error',text);notice.setAttribute('role','alert');dialog.append(notice);$('error').classList.add('hidden');}else{$('error').textContent = text; $('error').classList.toggle('hidden', !text);} }
 function cue(kind) {
   if (!soundOn || !audioContext || audioContext.state !== 'running') return;
-  const notes = kind === 'win' ? [440, 554, 659] : kind === 'turn' ? [440, 587] : [220];
+  if(['shuffle','card','chip','fold'].includes(kind)){
+    noiseBuffer ||= (()=>{const buffer=audioContext.createBuffer(1,Math.ceil(audioContext.sampleRate*.25),audioContext.sampleRate),samples=buffer.getChannelData(0);for(let i=0;i<samples.length;i++)samples[i]=Math.random()*2-1;return buffer;})();
+    const bursts=kind==='shuffle'?5:kind==='chip'?2:1;
+    for(let i=0;i<bursts;i++){
+      const time=audioContext.currentTime+i*(kind==='shuffle'?.055:.035),duration=kind==='fold'?.12:kind==='card'?.065:kind==='chip'?.025:.045;
+      const source=audioContext.createBufferSource(),filter=audioContext.createBiquadFilter(),gain=audioContext.createGain();
+      source.buffer=noiseBuffer;filter.type='bandpass';filter.frequency.value=kind==='chip'?3200:kind==='fold'?500:kind==='card'?950:1100+i*170;filter.Q.value=kind==='chip'?5:.7;
+      gain.gain.setValueAtTime(0,time);gain.gain.linearRampToValueAtTime(kind==='fold'?.035:kind==='card'?.045:kind==='shuffle'?.045:.065,time+.009);gain.gain.exponentialRampToValueAtTime(.0001,time+duration);
+      source.connect(filter);filter.connect(gain);gain.connect(audioContext.destination);source.start(time);source.stop(time+duration+.01);
+      source.onended=()=>{source.disconnect();filter.disconnect();gain.disconnect();};
+    }
+    return;
+  }
+  const actionNotes={check:[330],call:[350,440],raise:[330,440,554]};
+  const notes=actionNotes[kind]||(kind==='win'?[440,554,659]:kind==='turn'?[440,587]:[220]);
+  const actionSound=Object.hasOwn(actionNotes,kind);
   notes.forEach((frequency, i) => {
-    const osc = audioContext.createOscillator(); const gain = audioContext.createGain(); const time = audioContext.currentTime + i * .1;
-    osc.type = kind === 'chip' ? 'triangle' : 'sine'; osc.frequency.value = frequency; gain.gain.setValueAtTime(0, time); gain.gain.linearRampToValueAtTime(.045, time + .015); gain.gain.exponentialRampToValueAtTime(.001, time + .16);
-    osc.connect(gain); gain.connect(audioContext.destination); osc.start(time); osc.stop(time + .18);
+    const osc = audioContext.createOscillator(); const gain = audioContext.createGain(); const time = audioContext.currentTime + i * (actionSound?.065:.1);
+    osc.type = kind === 'chip' ? 'triangle' : 'sine'; osc.frequency.value = frequency; gain.gain.setValueAtTime(0, time); gain.gain.linearRampToValueAtTime(actionSound?.026:.045, time + .015); gain.gain.exponentialRampToValueAtTime(.001, time + .16);
+    osc.connect(gain); gain.connect(audioContext.destination); osc.start(time); osc.stop(time + .18);osc.onended=()=>{osc.disconnect();gain.disconnect();};
   });
 }
 function cards(container, values, total = values.length, { back = false, hand = 0, winning = [] } = {}) {
@@ -38,10 +57,48 @@ function cards(container, values, total = values.length, { back = false, hand = 
         fresh.setAttribute('aria-label', `${rank} ${suit}`);
       } else { fresh.textContent = back ? '♠' : ''; fresh.setAttribute('aria-label', back ? 'Face-down card' : 'Undealt card'); }
       if (element) element.replaceWith(fresh); else container.append(fresh); element = fresh;
+      if(animateSnapshot&&motionAllowed()&&(card||back))fresh.animate([{translate:'0 -12px'},{translate:'0 0'}],{duration:180,delay:i*25,easing:'ease-out'});
     }
     element.className = `card${card && ['h', 'd'].includes(card.suit) ? ' red' : ''}${!card ? back ? ' back' : ' placeholder' : ''}${card && winners.has(cardKey(card)) ? ' winning' : ''}`;
   }
   while (container.children.length > total) container.lastElementChild.remove();
+}
+const payoutAnimations=new Set();
+function clearPayouts(){for(const animation of payoutAnimations)animation.cancel();payoutAnimations.clear();document.querySelectorAll('.payout-chip').forEach(chip=>chip.remove());}
+function collectPot(room){
+  clearPayouts();
+  if(!motionAllowed())return;
+  const pile=document.querySelector('.chip-stack'),origin=pile.getBoundingClientRect();
+  const totals=new Map();for(const result of room.hand.results)totals.set(result.id,(totals.get(result.id)||0)+result.amount);
+  const animations=[];
+  for(const [id,amount] of totals){
+    if(amount<=0)continue;
+    const seat=[...$('seats').children].find(seat=>seat.dataset.id===id);
+    const target=id===session.playerId?$('hero-stack'):seat?.querySelector('.seat-stack');if(!target)continue;
+    const end=target.getBoundingClientRect();
+    for(let i=0;i<5;i++){
+      const chip=node('span','payout-chip');chip.setAttribute('aria-hidden','true');
+      chip.style.left=`${origin.left+origin.width/2-10}px`;chip.style.top=`${origin.top+origin.height/2-5}px`;document.body.append(chip);
+      const dx=end.left+end.width/2-origin.left-origin.width/2,dy=end.top+end.height/2-origin.top-origin.height/2;
+      const animation=chip.animate([{translate:'0 0',opacity:1},{translate:`${dx*.5}px ${dy*.5-35}px`,opacity:1,offset:.5},{translate:`${dx}px ${dy}px`,opacity:0}],{duration:650,delay:i*65,easing:'ease-in-out'});
+      payoutAnimations.add(animation);animations.push(animation.finished);
+      animation.finished.catch(()=>{}).finally(()=>{payoutAnimations.delete(animation);chip.remove();});
+    }
+    const glow=target.animate([{color:'#fff0b9',textShadow:'0 0 12px #ffd77b'},{color:'#e3c996',textShadow:'none'}],{duration:1100});
+    payoutAnimations.add(glow);glow.finished.catch(()=>{}).finally(()=>payoutAnimations.delete(glow));
+  }
+  Promise.allSettled(animations).then(()=>{if(currentRoom?.code===room.code&&currentRoom?.hand?.number===room.hand.number&&currentRoom?.hand?.stage==='finished')pile.style.opacity='0';});
+}
+function renderPotChips(amount){
+  const pile=document.querySelector('.chip-stack');
+  if(currentRoom?.hand?.stage!=='finished')pile.style.opacity='';
+  const count=amount>0?Math.min(28,2+Math.floor(Math.log2(1+amount/10)*3)):0;
+  if(pile.dataset.count===String(count))return;
+  pile.dataset.count=String(count);pile.style.opacity='';
+  pile.replaceChildren(...Array.from({length:count},(_,index)=>{const chip=node('i');chip.style.left=`${Math.floor(index/7)*16}px`;chip.style.bottom=`${index%7*4}px`;return chip;}));
+  pile.style.width=`${Math.max(1,Math.ceil(count/7))*16+9}px`;
+  pile.style.height=`${Math.min(count,7)*4+8}px`;
+  if(animateSnapshot&&motionAllowed())pile.animate([{translate:'0 -5px',opacity:.7},{translate:'0 0',opacity:1}],{duration:230});
 }
 function avatar(index) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.classList.add('seat-avatar'); svg.setAttribute('aria-hidden', 'true');svg.setAttribute('viewBox','0 0 100 200');
@@ -66,7 +123,7 @@ function renderSeats(room) {
     }
     if (!player) { seat.className = 'seat empty'; continue; }
     const online = room.players.find(p => p.id === player.id);
-    if(online?.appearance)ui.character.portrait(seat.querySelector('svg'),online.appearance.outfit,online.appearance.color);
+    drawCharacter(seat.querySelector('svg'),online?.appearance||{},'seated');
     const winner = h?.results.some(r => r.id === player.id);
     seat.className = `seat${player.id === session.playerId ? ' self' : ''}${player.folded ? ' folded' : ''}${h?.turnId === player.id ? ' turn' : ''}${winner ? ' winner' : ''}`;
     seat.querySelector('.seat-name').textContent = `${player.name}${player.id === session.playerId ? ' · you' : ''}`;
@@ -78,7 +135,7 @@ function renderSeats(room) {
     if (badges.dataset.role !== role) { badges.dataset.role = role; badges.replaceChildren(...role.split('|').filter(Boolean).map(label => node('span', label === 'D' ? '' : 'blind', label))); }
     cards(seat.querySelector('.cards'), player.cards || [], h ? 2 : 0, { back: true, hand: h?.number, winning: winner ? player.bestCards : [] });
     const bet = seat.querySelector('.seat-bet'); const betKey = `${h?.number}:${player.bet || 0}`;
-    if (bet.dataset.key !== betKey) { bet.dataset.key = betKey; bet.textContent = money(player.bet || 0); bet.classList.remove('changed'); void bet.offsetWidth; bet.classList.add('changed'); }
+    if (bet.dataset.key !== betKey) { bet.dataset.key = betKey; bet.textContent = `Bet ${money(player.bet || 0)}`; bet.classList.remove('changed'); void bet.offsetWidth; bet.classList.add('changed'); }
     bet.classList.toggle('hidden', !player.bet || h?.stage === 'finished');
   }
 }
@@ -94,6 +151,7 @@ function render(room) {
   if (room.character && ui.character.profile && room.character.id !== ui.character.profile.id) { resetSession('This table belongs to another character.'); return; }
   if (currentRoom?.code === room.code && currentRoom?.hand && room.hand && (currentRoom.hand.number > room.hand.number || (currentRoom.hand.number === room.hand.number && currentRoom.hand.version > room.hand.version))) return;
   const previous = currentRoom; if (room.serverTime) clockOffset = room.serverTime - Date.now();
+  animateSnapshot=Boolean(currentRoom&&currentRoom.code===room.code);
   currentRoom = room;
   $('room-code').textContent = room.code;
   $('players').replaceChildren(...room.players.map(player => {
@@ -120,14 +178,14 @@ function render(room) {
   $('lobby-help').textContent = playing ? 'Hand in progress. Leave when your hand is over.' : me?.stack === 0 ? 'No chips remaining. Return home to buy into a new table.' : funded.length < 2 ? room.singleplayer ? 'Table finished. Return home to start a new NPC table.' : 'Invite a friend. At least two players are required.' : unready ? `${unready} players are not ready.` : me?.host ? 'All players ready. Start the hand.' : 'All players ready. Waiting for the host.';
   renderSeats(room);
   if (!room.hand) {
-    $('hand-title').textContent = room.singleplayer ? 'Your table is ready' : 'Waiting for players'; $('pot').textContent = '$0'; $('pot-label').textContent = 'POT'; $('pots').textContent = ''; $('turn-status').textContent = room.singleplayer ? 'Ready to play' : 'Waiting for players'; $('turn-clock').textContent = '—';
+    $('hand-title').textContent = room.singleplayer ? 'Your table is ready' : 'Waiting for players'; $('pot').textContent = '$0';renderPotChips(0); $('pot-label').textContent = 'POT'; $('pots').textContent = ''; $('turn-status').textContent = room.singleplayer ? 'Ready to play' : 'Waiting for players'; $('turn-clock').textContent = '—';
     cards($('board'), [], 5); cards($('hole'), [], 2, {back:true}); $('hand-name').textContent = 'Waiting for cards'; $('street').replaceChildren(); $('controls').classList.add('hidden'); $('results').classList.add('hidden');
     $('waiting').classList.remove('hidden'); $('waiting').replaceChildren(node('strong', '', room.singleplayer ? 'Mara and Jules are ready' : 'Waiting for players'), node('span', '', room.singleplayer ? 'Start a hand when you are ready.' : 'Join the lobby and select Ready.')); return;
   }
   const h = room.hand;
   $('hand-title').textContent = `Hand #${h.number} · ${stageNames[h.stage]}`;
   const winnings = h.results.reduce((sum, r) => sum + r.amount, 0);
-  $('pot').textContent = money(h.stage === 'finished' ? winnings : h.pot); $('pot-label').textContent = h.stage === 'finished' ? 'PAID OUT' : 'POT';
+  $('pot').textContent = money(h.stage === 'finished' ? winnings : h.pot);renderPotChips(h.stage==='finished'?winnings:h.pot); $('pot-label').textContent = h.stage === 'finished' ? 'PAID OUT' : 'POT';
   if (previous?.hand && previous.hand.pot !== h.pot) { const pot = document.querySelector('.pot-display'); pot.classList.remove('changed'); void pot.offsetWidth; pot.classList.add('changed'); }
   const winnerCards = h.seats.filter(p => h.results.some(r => r.id === p.id)).flatMap(p => p.bestCards || []);
   cards($('board'), h.board, 5, {hand:h.number, winning: winnerCards});
@@ -149,7 +207,6 @@ function render(room) {
     $('call').textContent = legal.canCheck ? 'Check' : `Call ${money(legal.call)}`;
     $('fold').disabled = busy || !connected; $('call').disabled = busy || !connected;
     $('raise-button').disabled = busy || !connected || !legal.canRaise;
-    $('all-in').disabled = busy || !connected || (!legal.canRaise && legal.maxRaiseTo > h.currentBet);
     for (const id of ['raise', 'raise-slider']) { $(id).min = Math.min(legal.minRaiseTo, legal.maxRaiseTo); $(id).max = legal.maxRaiseTo; $(id).disabled = !legal.canRaise || busy || !connected; }
     $('raise').disabled = !legal.canRaise || busy || !connected;
     const key = `${h.number}:${h.version}`;
@@ -168,9 +225,17 @@ function render(room) {
   }
   $('history').replaceChildren(...h.log.map(message => { const li = document.createElement('li'); li.textContent = message; return li; }));
   $('history-count').textContent = `${h.log.length} events`;
+  if(previous&&(!previous.hand||h.number!==previous.hand.number)){clearPayouts();cue('shuffle');}
+  else if(previous?.hand&&h.board.length>previous.hand.board.length)cue('card');
   if (previous?.hand && h.number === previous.hand.number && h.version !== previous.hand.version) {
-    if (h.stage === 'finished') cue(h.results.some(r => r.id === session.playerId) ? 'win' : 'chip');
-    else if (h.turnId === session.playerId && previous.hand.turnId !== session.playerId) cue('turn'); else if (h.pot !== previous.hand.pot) cue('chip');
+    // Versions advance for accepted actions. Read the latest action even if a street
+    // transition cleared lastAction; repeated snapshots and reconnects remain silent.
+    const actionLine=[...h.log].reverse().find(line=>/: (fold|check|call|raise)(?: (?:to )?\$\d+(?: · all-in)?)?$/.test(line));
+    const actionKind=actionLine?.match(/: (fold|check|call|raise)(?: (?:to )?\$\d+(?: · all-in)?)?$/)?.[1];
+    if(actionKind)cue(actionKind);
+
+    if (h.stage === 'finished'&&previous.hand.stage!=='finished'){cue('win');collectPot(room);}
+    else {if(h.pot>previous.hand.pot)cue('chip');if(h.turnId===session.playerId&&previous.hand.turnId!==session.playerId)cue('turn');}
   }
   updateClock();
 }
@@ -190,6 +255,7 @@ function updateRaiseCost() {
 }
 setInterval(updateClock, 1000);
 function resetSession(message = '') {
+  clearPayouts();
   events?.abort(); events = null;
   try { sessionStorage.removeItem('casino-session'); } catch { /* In-memory state is still cleared. */ }
   session = null; currentRoom = null; connected = false; busy = false;
@@ -258,20 +324,19 @@ async function pokerAction(kind, amount) {
 }
 $('fold').onclick = action(() => pokerAction('fold'));
 $('call').onclick = action(() => pokerAction(currentRoom.hand.actions.canCheck ? 'check' : 'call'));
-$('all-in').onclick = action(() => pokerAction(currentRoom.hand.actions.maxRaiseTo > currentRoom.hand.currentBet ? 'raise' : 'call', currentRoom.hand.actions.maxRaiseTo));
 $('raise-form').onsubmit = action(() => pokerAction('raise', Number($('raise').value)));
 $('raise').oninput = () => { $('raise-slider').value = $('raise').value; updateRaiseCost(); };
 $('raise-slider').oninput = () => { $('raise').value = $('raise-slider').value; updateRaiseCost(); };
 document.querySelectorAll('[data-preset]').forEach(button => button.onclick = () => {
   const h = currentRoom.hand; const legal = h.actions; if (!legal?.canRaise) return;
   const me = h.seats.find(p => p.id === session.playerId);
-  const value = ({ min: legal.minRaiseTo, half: h.currentBet + Math.round((h.pot + legal.call) / 2), pot: h.currentBet + h.pot + legal.call, max: legal.maxRaiseTo })[button.dataset.preset];
+  const value = ({ min: legal.minRaiseTo, half: h.currentBet + Math.round((h.pot + legal.call) / 2), pot: h.currentBet + h.pot + legal.call, bb2: 20, bb3: 30, max: legal.maxRaiseTo })[button.dataset.preset];
   $('raise').value = Math.min(legal.maxRaiseTo, Math.max(Math.min(legal.minRaiseTo, legal.maxRaiseTo), value)); $('raise-slider').value = $('raise').value; updateRaiseCost();
 });
 async function setSound(enabled) {
   try {
     if (enabled) { audioContext ||= new AudioContext(); await audioContext.resume(); }
-    soundOn = enabled; $('sound').textContent = soundOn ? 'Sound on' : 'Sound off'; $('sound').setAttribute('aria-pressed', String(soundOn)); ui.saveSound(soundOn); if (enabled) cue('turn');
+    soundOn = enabled; $('sound').setAttribute('aria-label',soundOn?'Mute sound':'Unmute sound'); $('sound').title=soundOn?'Mute sound':'Unmute sound'; $('sound').setAttribute('aria-pressed', String(soundOn)); ui.saveSound(soundOn); if (enabled) cue('turn');
   } catch { $('setting-sound').checked = false; setError('Audio could not start. Try the sound button again.'); }
 }
 $('sound').onclick = () => setSound(!soundOn);

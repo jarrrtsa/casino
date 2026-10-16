@@ -26,7 +26,7 @@ export function createHomeLobbies({character,now=Date.now,maxMembers=6,maxRooms=
   function snapshot(room){
     return {id:room.id,code:room.code,hostId:room.hostId,homeOwnerId:room.ownerId,environment:room.environment,
       capacity:maxMembers,players:[...room.members.keys()].map(id=>{
-        const c=character(id);return {id,name:c.name,appearance:{outfit:c.outfit,color:c.color},host:id===room.hostId};
+        const c=character(id);return {id,name:c.name,appearance:{...c.appearance,outfit:c.outfit,color:c.color},host:id===room.hostId};
       })};
   }
   function touch(room,id){room.members.set(id,now());return snapshot(room);}

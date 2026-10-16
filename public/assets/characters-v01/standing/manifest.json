@@ -1,0 +1,258 @@
+{
+  "version": 1,
+  "status": "draft",
+  "styleSource": "approved hoodie-refined-v01",
+  "canvas": [
+    100,
+    200
+  ],
+  "exportSize": [
+    500,
+    1000
+  ],
+  "footAnchor": [
+    50,
+    195
+  ],
+  "directions": [
+    "front-standing"
+  ],
+  "animation": false,
+  "fitRule": "Use body.width for body/upper/lower/body accessory, body.head for face/headwear/head accessory; transform about x=50, do not resize raw layers independently.",
+  "renderOrder": [
+    "body",
+    "bottom",
+    "head-base",
+    "top",
+    "headwear",
+    "accessory"
+  ],
+  "combinations": 3750,
+  "bases": [
+    {
+      "id": "body-1",
+      "name": "Hoikka · vaalea",
+      "width": 0.86,
+      "head": 0.96,
+      "skin": [
+        "#E1B69C",
+        "#C69781",
+        "#EBC7AD"
+      ]
+    },
+    {
+      "id": "body-2",
+      "name": "Perus · lämmin",
+      "width": 1,
+      "head": 1,
+      "skin": [
+        "#D4A88E",
+        "#B88976",
+        "#E5B99E"
+      ]
+    },
+    {
+      "id": "body-3",
+      "name": "Hartikas · oliivi",
+      "width": 1.1,
+      "head": 1.02,
+      "skin": [
+        "#B88E68",
+        "#937052",
+        "#CBA17B"
+      ]
+    },
+    {
+      "id": "body-4",
+      "name": "Tukeva · tumma",
+      "width": 1.17,
+      "head": 1.06,
+      "skin": [
+        "#765342",
+        "#543B34",
+        "#966C52"
+      ]
+    },
+    {
+      "id": "body-5",
+      "name": "Kapea · ruskea",
+      "width": 0.94,
+      "head": 1,
+      "skin": [
+        "#A56C4E",
+        "#794E3D",
+        "#C28B62"
+      ]
+    }
+  ],
+  "tops": [
+    {
+      "id": "top-1",
+      "name": "Sininen huppari"
+    },
+    {
+      "id": "top-2",
+      "name": "Ruosteenpunainen pilotti"
+    },
+    {
+      "id": "top-3",
+      "name": "Salvianvihreä T-paita"
+    },
+    {
+      "id": "top-4",
+      "name": "Luumunvärinen kauluspaita"
+    },
+    {
+      "id": "top-5",
+      "name": "Hiekanvärinen pitkä takki"
+    }
+  ],
+  "bottoms": [
+    {
+      "id": "bottom-1",
+      "name": "Tummat farkut"
+    },
+    {
+      "id": "bottom-2",
+      "name": "Hiekka-chinot"
+    },
+    {
+      "id": "bottom-3",
+      "name": "Oliivishortsit"
+    },
+    {
+      "id": "bottom-4",
+      "name": "Harmaat collegehousut"
+    },
+    {
+      "id": "bottom-5",
+      "name": "Denimshortsit"
+    }
+  ],
+  "heads": [
+    {
+      "id": "head-1",
+      "name": "Lyhyt tumma tukka"
+    },
+    {
+      "id": "head-2",
+      "name": "Vaalea sivujakaus"
+    },
+    {
+      "id": "head-3",
+      "name": "Lyhyet kiharat"
+    },
+    {
+      "id": "head-4",
+      "name": "Sininen lippis"
+    },
+    {
+      "id": "head-5",
+      "name": "Viininpunainen pipo"
+    }
+  ],
+  "accessories": [
+    {
+      "id": "accessory-0",
+      "name": "Ei asustetta",
+      "fit": "head"
+    },
+    {
+      "id": "accessory-1",
+      "name": "Aurinkolasit",
+      "fit": "head"
+    },
+    {
+      "id": "accessory-2",
+      "name": "Rannekello",
+      "fit": "body"
+    },
+    {
+      "id": "accessory-3",
+      "name": "Kuulokkeet",
+      "fit": "head"
+    },
+    {
+      "id": "accessory-4",
+      "name": "Okranvärinen huivi",
+      "fit": "body"
+    },
+    {
+      "id": "accessory-5",
+      "name": "Kaulaketju",
+      "fit": "body"
+    }
+  ],
+  "examples": [
+    [
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      1,
+      2,
+      3,
+      4,
+      1
+    ],
+    [
+      2,
+      4,
+      1,
+      3,
+      2
+    ],
+    [
+      3,
+      1,
+      4,
+      2,
+      3
+    ],
+    [
+      4,
+      3,
+      2,
+      1,
+      4
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      5
+    ],
+    [
+      1,
+      2,
+      3,
+      4,
+      0
+    ],
+    [
+      2,
+      4,
+      1,
+      3,
+      1
+    ],
+    [
+      3,
+      1,
+      4,
+      2,
+      2
+    ],
+    [
+      4,
+      3,
+      2,
+      1,
+      3
+    ]
+  ]
+}

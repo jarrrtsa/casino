@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "status": "review",
+  "pose": "seated-front",
+  "canvas": [
+    100,
+    200
+  ],
+  "exportSize": [
+    500,
+    1000
+  ],
+  "seatAnchor": [
+    50,
+    120
+  ],
+  "footAnchor": [
+    50,
+    195
+  ],
+  "partCount": 26,
+  "combinations": 3750,
+  "renderOrder": [
+    "body",
+    "bottom",
+    "head-base",
+    "top",
+    "hands",
+    "headwear",
+    "accessory"
+  ],
+  "fitRule": "Standing body.width/body.head rules unchanged",
+  "chairIncluded": false,
+  "animation": false
+}

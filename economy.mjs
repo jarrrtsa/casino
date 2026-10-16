@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import {normalizeAppearance,ownedParts,cosmeticCatalog,PARTS} from './public/appearance.mjs';
 
 export const CATALOG = [
   { id: 'hoodie', name: 'Hoodie', level: 1, price: 0 },
@@ -38,7 +39,7 @@ export function createEconomy(path = ':memory:', now = Date.now) {
     const c = get(id); const chips = db.prepare('SELECT chips FROM leases WHERE character=?').get(id)?.chips || 0;
     const level = Math.floor(c.xp / 100) + 1; const wealth = c.cash + chips - c.debt;
     const home = [...HOMES].reverse().find(h => level >= h.level && wealth >= h.wealth);
-    return { ...c, level, xpInLevel: c.xp % 100, xpNext: 100, chips, inTable:Boolean(db.prepare('SELECT 1 FROM leases WHERE character=?').get(id)), wealth, home,
+    return { ...c, appearance:normalizeAppearance(c.appearance||c),ownedParts:ownedParts(c),cosmeticCatalog:cosmeticCatalog(), level, xpInLevel: c.xp % 100, xpNext: 100, chips, inTable:Boolean(db.prepare('SELECT 1 FROM leases WHERE character=?').get(id)), wealth, home,
       nextHome: HOMES[HOMES.indexOf(home) + 1] || null, catalog: CATALOG,
       transactions: db.prepare('SELECT kind,delta,created FROM ledger WHERE character=? ORDER BY id DESC LIMIT 8').all(id) };
   }
@@ -92,10 +93,26 @@ export function createEconomy(path = ':memory:', now = Date.now) {
         if(kind==='borrow') { if(c.debt) throw new Error('Repay your current loan before taking another.'); if(c.cash>100) throw new Error('Loans are available when your cash is $100 or less.'); c.debt=500;c.cash+=500;log(c,'Loan received',500); }
         else if(kind==='repay') { const sum=amount(data.amount);if(sum>c.debt||sum>c.cash)throw new Error('Repayment exceeds your debt or available cash.');c.cash-=sum;c.debt-=sum;log(c,'Loan repayment',-sum); }
         else if(kind==='customize') {
+          if(data.appearance!==undefined){
+            const input=data.appearance;
+            if(!input||typeof input!=='object'||Object.entries(normalizeAppearance()).some(([key])=>!Number.isInteger(input[key])||input[key]<(key==='accessory'?0:1)||input[key]>5))throw new Error('Invalid character selection.');
+            const selection=normalizeAppearance(input),owned=new Set(ownedParts(c));
+            for(const slot of PARTS){
+              const id=`${slot}:${selection[slot]}`;if(owned.has(id))continue;
+              const item=cosmeticCatalog().find(item=>item.id===id);
+              if(item.level===null||item.price===null)throw new Error('This item is awaiting its XP requirement and price.');
+              if(Math.floor(c.xp/100)+1<item.level)throw new Error(`Unlocked at level ${item.level}.`);
+              if(c.cash<item.price)throw new Error('Not enough cash.');
+              c.cash-=item.price;owned.add(id);log(c,`Bought ${id}`,-item.price);
+            }
+            c.appearance=selection;c.ownedParts=[...owned];
+          }else{
           const item=CATALOG.find(x=>x.id===data.outfit);if(!item)throw new Error('Unknown outfit.');
           if(Math.floor(c.xp/100)+1<item.level)throw new Error(`Unlocked at level ${item.level}.`);
           if(!c.owned.includes(item.id)){if(c.cash<item.price)throw new Error('Not enough cash.');c.cash-=item.price;c.owned.push(item.id);log(c,`Bought ${item.name}`,-item.price);}c.outfit=item.id;
           if(['blue','amber','plum','sage'].includes(data.color))c.color=data.color;
+          const legacy=normalizeAppearance({outfit:c.outfit});c.appearance={...normalizeAppearance(c.appearance||c),top:legacy.top,head:legacy.head};
+          }
           const name=typeof data.name==='string'?data.name.trim().slice(0,24):c.name;if(!name)throw new Error('Enter a character name.');c.name=name;
         }
         else if(kind==='job') { if(now()-c.lastJob<15000)throw new Error('Wait a moment before your next delivery.');c.cash+=30;c.lastJob=now();log(c,'Delivery payment',30); }

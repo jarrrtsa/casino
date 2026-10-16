@@ -77,10 +77,10 @@ test('UI shows API 409 in the topmost recovery dialog and preserves old identity
   env.e('recovery-dialog').close();assert.equal(env.e('recover-key').value,'');
 });
 
-test('UI can create a character with the selected color through the new identity boundary',async t=>{
-  const env=platform(t,null,async(path,init)=>path.endsWith('/create')?reply(200,{token:OLD,character:profile()}):reply(200,{...profile(),color:JSON.parse(init.body).color}));await env.manager.ready;
-  env.manager.open('character');await tick();env.e('character-name').value='Old';env.e('character-color').value='sage';env.e('character-form').onsubmit(event);await tick();
-  assert.equal(env.manager.token,OLD);assert.equal(env.manager.profile.color,'sage');assert.equal(env.errors.length,0);assert.equal(env.e('character-modal').open,false);
+test('UI can create a character with the selected modular appearance through the identity boundary',async t=>{
+  const env=platform(t,null,async(path,init)=>path.endsWith('/create')?reply(200,{token:OLD,character:profile()}):reply(200,{...profile(),appearance:JSON.parse(init.body).appearance}));await env.manager.ready;
+  env.manager.open('character');await tick();env.e('character-name').value='Old';env.e('character-body').value='3';env.e('character-form').onsubmit(event);await tick();
+  assert.equal(env.manager.token,OLD);assert.deepEqual(env.manager.profile.appearance,{body:3,top:1,bottom:1,head:1,accessory:0});assert.equal(env.errors.length,0);assert.equal(env.e('character-modal').open,false);
 });
 
 test('UI reloads the adopted token when a late old response arrives before the storage event',async t=>{

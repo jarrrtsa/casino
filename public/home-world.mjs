@@ -1,3 +1,4 @@
+import {drawCharacter} from './character-renderer.mjs';
 import { WORLD_GEOMETRY, DEFAULT_POSITION, safePosition, moveFootpoint, interactionAt } from './world-layout.mjs';
 
 export const WORLD = Object.freeze({ ...WORLD_GEOMETRY, viewport: 1920, speed: 430 });
@@ -121,8 +122,7 @@ export function createHomeWorld({ home, avatar, frame, layers, hint }) {
         let remote=remotes.get(pose.id);
         if(!remote){const node=avatar.cloneNode(true);node.classList.add('remote-character');node.dataset.characterId=pose.id;node.querySelector('svg').removeAttribute('id');node.querySelector('span').removeAttribute('id');frame.append(node);remote={node};remotes.set(pose.id,remote);}
         remote.pose=pose;remote.node.querySelector('span').textContent=member.name;
-        remote.node.querySelector('use').setAttribute('href',`/assets/characters.svg#${['hoodie','cap','beanie','coat'].includes(member.appearance.outfit)?member.appearance.outfit:'hoodie'}`);
-        remote.node.querySelector('svg').style.color=({blue:'#5c7e96',amber:'#b59778',plum:'#987d96',sage:'#829c91'})[member.appearance.color]||'#5c7e96';
+        drawCharacter(remote.node.querySelector('svg'),member.appearance);
       }
       draw();
     },
@@ -130,6 +130,7 @@ export function createHomeWorld({ home, avatar, frame, layers, hint }) {
       const changed = value !== environment || id !== identity; environment = value; identity = id;
       const layered = isLayered(value); home.classList.toggle('layered-world', layered); frame.classList.toggle('hidden', !layered);
       if (layered) for (const plane of planes) {
+        if(plane.dataset.fx)continue;
         const name = plane.dataset.plane === 'far' ? 'background-far' : plane.dataset.plane === 'close' ? 'background-close' : plane.dataset.plane;
         const src = `/assets/${HOME_ASSETS[value]}/${name}.png`; if (plane.getAttribute('src') !== src) plane.src = src;
       }

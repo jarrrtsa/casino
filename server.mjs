@@ -12,6 +12,7 @@ import { createHomePresence } from './home-presence.mjs';
 
 const publicFiles = new Map([['/', ['index.html', 'text/html']], ['/app.js', ['app.js', 'text/javascript']], ['/shell.js', ['shell.js', 'text/javascript']], ['/style.css', ['style.css', 'text/css']], ['/shell.css', ['shell.css', 'text/css']], ['/assets/dealer.svg', ['assets/dealer.svg', 'image/svg+xml']], ['/assets/home.svg', ['assets/home.svg', 'image/svg+xml']], ['/assets/cellar.svg', ['assets/cellar.svg', 'image/svg+xml']], ['/assets/avatars.svg', ['assets/avatars.svg', 'image/svg+xml']]]);
 for(const name of ['bridge','loft','mansion','characters','table-bridge','table-home','table-loft','table-mansion'])publicFiles.set(`/assets/${name}.svg`,[`assets/${name}.svg`,'image/svg+xml']);
+for(const name of ['appearance','character-renderer','character-standing-data','character-seated-data'])publicFiles.set(`/${name}.mjs`,[`${name}.mjs`,'text/javascript']);
 publicFiles.set('/character.js',['character.js','text/javascript']);
 publicFiles.set('/rpg.css',['rpg.css','text/css']);
 publicFiles.set('/home-world.mjs',['home-world.mjs','text/javascript']);
@@ -222,7 +223,7 @@ async function body(req) {
         if (room.players.length >= 6) return reply(res, 409, { error: 'Table full (6 players).' });
         const token = randomBytes(32).toString('hex');
         const chips=characterId ? economy.buyIn(characterId,token,data.buyIn) : 1000;
-        const player = { id: randomUUID(), name, characterId, appearance:character?{outfit:character.outfit,color:character.color}:null, ready: Boolean(room.singleplayer), stack: chips, disconnectedAt: now() };
+        const player = { id: randomUUID(), name, characterId, appearance:character?{...character.appearance,outfit:character.outfit,color:character.color}:null, ready: Boolean(room.singleplayer), stack: chips, disconnectedAt: now() };
         if (!room.host) room.host = player.id;
         room.players.push(player);
         if(room.singleplayer)room.players.push(...createNpcSeats(chips));
